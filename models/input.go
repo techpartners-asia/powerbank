@@ -1,4 +1,4 @@
-package models
+package powerbankModels
 
 import mqtt "github.com/eclipse/paho.mqtt.golang"
 

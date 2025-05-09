@@ -4,15 +4,15 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/techpartners-asia/powerbank/models"
+	powerbankModels "github.com/techpartners-asia/powerbank/models"
 )
 
-func ParseReturnPowerBankResponse(response []byte) (*models.PowerBankReturnResponse, error) {
+func ParseReturnPowerBankResponse(response []byte) (*powerbankModels.PowerBankReturnResponse, error) {
 	if len(response) < 9 {
 		return nil, fmt.Errorf("invalid data length: expected at least 9 bytes, got %d", len(response))
 	}
 
-	return &models.PowerBankReturnResponse{
+	return &powerbankModels.PowerBankReturnResponse{
 		Head:         response[0],
 		Length:       int(response[1]<<8 | response[2]),
 		Cmd:          response[3],
@@ -33,12 +33,12 @@ func ParseReturnPowerBankResponse(response []byte) (*models.PowerBankReturnRespo
 	}, nil
 }
 
-func ParsePopupPowerBankResponse(response []byte) (*models.PowerBankPopupResponse, error) {
+func ParsePopupPowerBankResponse(response []byte) (*powerbankModels.PowerBankPopupResponse, error) {
 	if len(response) < 21 {
 		return nil, fmt.Errorf("invalid data length: expected at least 9 bytes, got %d", len(response))
 	}
 
-	return &models.PowerBankPopupResponse{
+	return &powerbankModels.PowerBankPopupResponse{
 		Head:          response[0],
 		Length:        int(response[1]<<8 | response[2]),
 		Cmd:           response[3],

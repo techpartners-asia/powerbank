@@ -1,4 +1,4 @@
-package models
+package powerbankModels
 
 const (
 	PopupFailed  = 0x00

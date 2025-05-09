@@ -1,4 +1,4 @@
-package api
+package powerbankSdk
 
 const (
 	CMD_POPUP  = 0x31

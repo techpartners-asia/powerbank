@@ -1,4 +1,4 @@
-package api
+package powerbankSdk
 
 import (
 	"fmt"
@@ -7,7 +7,7 @@ import (
 	"time"
 
 	mqtt "github.com/eclipse/paho.mqtt.golang"
-	"github.com/techpartners-asia/powerbank/models"
+	powerbankModels "github.com/techpartners-asia/powerbank/models"
 )
 
 var f mqtt.MessageHandler = func(client mqtt.Client, msg mqtt.Message) {
@@ -23,7 +23,7 @@ type apiService struct {
 	client mqtt.Client
 }
 
-func New(input models.ClientInput) ApiService {
+func New(input powerbankModels.ClientInput) ApiService {
 	mqtt.DEBUG = log.New(os.Stdout, "", 0)
 	mqtt.ERROR = log.New(os.Stdout, "", 0)
 	opts := mqtt.NewClientOptions().AddBroker(fmt.Sprintf("tcp://%s:%s", input.Host, input.Port))
