@@ -23,7 +23,7 @@ type apiService struct {
 	client mqtt.Client
 }
 
-func New(input powerbankModels.ClientInput) ApiService {
+func NewServer(input powerbankModels.ServerInput) ApiService {
 	mqtt.DEBUG = log.New(os.Stdout, "", 0)
 	mqtt.ERROR = log.New(os.Stdout, "", 0)
 	opts := mqtt.NewClientOptions().AddBroker(fmt.Sprintf("tcp://%s:%s", input.Host, input.Port))

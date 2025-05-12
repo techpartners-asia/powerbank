@@ -14,10 +14,7 @@ const (
 )
 
 type (
-	PowerBankResponse struct {
-		Head         byte // Byte[0] - Header code - ( head )
-		Length       int  // Byte[1-2] - Packet length - ( length )
-		Cmd          byte // Byte[3] - Command name - ( cmd ) - 0x31 Popup | 0x40 Return
-		ControlIndex int  // Byte[4] - Movement board address - ( controlIndex )
+	CreateUserResponse struct {
+		UserID string `json:"user_id"`
 	}
 )
