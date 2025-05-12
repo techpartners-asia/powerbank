@@ -78,7 +78,7 @@ func (s *apiService) Publish(deviceId string, publishType string, data string) e
 	if publishType == PUBLISH_TYPE_CHECK {
 		payload = []byte(fmt.Sprintf("{\"cmd\":\"%s\"}", CMD_CHECK))
 	} else if publishType == PUBLISH_TYPE_POPUP {
-		payload = []byte(fmt.Sprintf("{\"cmd\":\"%s\"}", CMD_POPUP))
+		payload = []byte(fmt.Sprintf("{\"cmd\":\"%s\",\"data\":%s}", CMD_POPUP, data))
 	}
 
 	response := s.client.Publish(fmt.Sprintf(TOPIC_PUBLISH, deviceId), 0, false, payload)
