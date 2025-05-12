@@ -7,7 +7,9 @@ import (
 	"time"
 
 	mqtt "github.com/eclipse/paho.mqtt.golang"
+	"github.com/techpartners-asia/powerbank/constants"
 	powerbankModels "github.com/techpartners-asia/powerbank/models"
+	powerbankUtils "github.com/techpartners-asia/powerbank/utils"
 )
 
 var f mqtt.MessageHandler = func(client mqtt.Client, msg mqtt.Message) {
@@ -16,7 +18,7 @@ var f mqtt.MessageHandler = func(client mqtt.Client, msg mqtt.Message) {
 }
 
 type ApiService interface {
-	Publish(deviceId string, publishType string, data string) error
+	Publish(input powerbankModels.PublishInput) error
 }
 
 type apiService struct {
@@ -39,49 +41,39 @@ func NewServer(input powerbankModels.ServerInput) ApiService {
 		log.Fatal(token.Error())
 	}
 
+	// * NOTE * - Subscribe
+	c.Subscribe(string(constants.TOPIC_SUBSCRIBE), 0, func(client mqtt.Client, msg mqtt.Message) {
+
+		res, err := powerbankUtils.ParseResponse(msg)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+		input.CallbackSubscribe(res)
+	})
+
 	service := &apiService{
 		client: c,
-	}
-	err := service.subscribe(input.CallbackSubscribe)
-
-	if err != nil {
-		log.Fatal(err)
 	}
 
 	return service
 }
 
-// * NOTE - Subscribe
-func (s *apiService) subscribe(callback func(msg mqtt.Message)) error {
-
-	response := s.client.Subscribe(TOPIC_SUBSCRIBE, 0, func(client mqtt.Client, msg mqtt.Message) {
-		callback(msg)
-	})
-
-	if response.Wait() && response.Error() != nil {
-		log.Fatal(response.Error())
-		return response.Error()
-	}
-
-	response.Wait()
-
-	fmt.Println("Subscribe added successfully")
-
-	return nil
-}
-
 // * NOTE - Publish
-func (s *apiService) Publish(deviceId string, publishType string, data string) error {
+func (s *apiService) Publish(input powerbankModels.PublishInput) error {
 
-	var payload []byte
+	var payload string
 
-	if publishType == PUBLISH_TYPE_CHECK {
-		payload = []byte(fmt.Sprintf("{\"cmd\":\"%v\"}", CMD_CHECK))
-	} else if publishType == PUBLISH_TYPE_POPUP {
-		payload = []byte(fmt.Sprintf("{\"cmd\":\"%v\",\"data\":%s}", CMD_POPUP, data))
+	switch input.PublishType {
+	case constants.PUBLISH_TYPE_CHECK:
+		payload = (fmt.Sprintf("{\"cmd\":\"%v\"}", constants.PUBLISH_TYPE_CHECK))
+	case constants.PUBLISH_TYPE_POPUP:
+		payload = (fmt.Sprintf("{\"cmd\":\"%v\",\"data\":%s}", constants.PUBLISH_TYPE_POPUP, input.Data))
 	}
 
-	response := s.client.Publish(fmt.Sprintf(TOPIC_PUBLISH, deviceId), 0, false, payload)
+	fmt.Println(payload)
+
+	response := s.client.Publish(fmt.Sprintf(string(constants.TOPIC_PUBLISH), input.ClientID), 0, false, payload)
 	if response.Wait() && response.Error() != nil {
 		log.Fatal(response.Error())
 		return response.Error()
@@ -89,6 +81,7 @@ func (s *apiService) Publish(deviceId string, publishType string, data string) e
 
 	response.Wait()
 
+	// fmt.Println(reponse.)
 	fmt.Println("Publish added successfully")
 
 	return nil

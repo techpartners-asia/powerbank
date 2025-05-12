@@ -8,7 +8,7 @@ import (
 )
 
 type UserService interface {
-	AddUser(deviceId string, password string, database string) *CreateUserResponse
+	AddUser(deviceId string, password string, database string) *powerbankModels.CreateUserResponse
 }
 
 type userService struct {
@@ -31,7 +31,7 @@ func NewUserService(input powerbankModels.UserInput) UserService {
 	}
 }
 
-func (s *userService) AddUser(deviceId string, password string, database string) *CreateUserResponse {
+func (s *userService) AddUser(deviceId string, password string, database string) *powerbankModels.CreateUserResponse {
 
 	s.options.URL = fmt.Sprintf("/api/v5/users/%s/users", database)
 	s.options.Body = map[string]interface{}{
@@ -46,7 +46,7 @@ func (s *userService) AddUser(deviceId string, password string, database string)
 		return nil
 	}
 
-	var data CreateUserResponse
+	var data powerbankModels.CreateUserResponse
 	if err := response.JSON(&data); err != nil {
 		return nil
 	}

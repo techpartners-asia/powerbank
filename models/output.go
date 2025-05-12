@@ -42,4 +42,44 @@ type (
 		HardVersion  int     // Byte[19] - Hardware version number
 		Verify       byte    // Byte[20] - Verification code
 	}
+
+	CreateUserResponse struct {
+		UserID string `json:"user_id"`
+	}
+
+	// PowerBankCheckResponse represents the byte protocol response for cabinet check
+	PowerBankCheckResponse struct {
+		Head          byte           // Byte[0] - Head code (Default: 0xA8)
+		Length        int            // Byte[1-2] - Packet length
+		Cmd           byte           // Byte[3] - Command name (Default: 0x10)
+		ControlBoards []ControlBoard // Control board information
+		Verify        byte           // Last byte - Check code
+	}
+
+	// ControlBoard represents a single control board's information
+	ControlBoard struct {
+		ControlIndex int    // Byte[0] - Control board address
+		Undefined1   int    // Byte[1] - Reserved 1
+		Undefined2   int    // Byte[2] - Reserved 2
+		Temperature  int    // Byte[3] - Temperature
+		SoftVersion  int    // Byte[4] - Software version
+		HardVersion  int    // Byte[5] - Hardware version
+		Holes        []Hole // Position information
+	}
+
+	// Hole represents a single position's information
+	Hole struct {
+		HoleIndex     int     // Byte[0] - Position address
+		State         int     // Byte[1] - State information
+		PowerbankCurr float64 // Byte[2] - Power bank current
+		PowerbankVolt float64 // Byte[3] - Power bank voltage
+		Area          string  // Byte[4] - Area code
+		PowerbankSN   string  // Byte[5-8] - Power bank SN
+		SOC           int     // Byte[9] - Battery percentage
+		Temperature   int     // Byte[10] - Temperature
+		ChargeVolt    float64 // Byte[11] - Charging voltage
+		ChargeCurr    float64 // Byte[12] - Charging current
+		SoftVersion   int     // Byte[13] - Software version
+		Sensor        byte    // Byte[14] - Position detection
+	}
 )
