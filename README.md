@@ -53,7 +53,7 @@ package main
 import (
     "fmt"
     mqtt "github.com/eclipse/paho.mqtt.golang"
-    powerbankSdk "github.com/techpartners-asia/powerbank/api"
+    powerbankSdk "github.com/techpartners-asia/powerbank"
     "github.com/techpartners-asia/powerbank/constants"
     powerbankModels "github.com/techpartners-asia/powerbank/models"
 )
@@ -118,30 +118,59 @@ The SDK requires the following configuration parameters:
 ### Basic Usage
 
 ```go
-service := powerbankSdk.NewServer(powerbankModels.ServerInput{
-    Host:     "mqtt.example.com",
-    Port:     "1883",
-    Username: "user",
-    Password: "pass",
-    CallbackSubscribe: func(msg mqtt.Message) {
-        fmt.Printf("Received: %s\n", string(msg.Payload()))
-    },
-})
+package main
+
+import (
+    "fmt"
+    mqtt "github.com/eclipse/paho.mqtt.golang"
+    powerbankSdk "github.com/techpartners-asia/powerbank"
+    powerbankModels "github.com/techpartners-asia/powerbank/models"
+)
+
+func main() {
+    service := powerbankSdk.NewServer(powerbankModels.ServerInput{
+        Host:     "mqtt.example.com",
+        Port:     "1883",
+        Username: "user",
+        Password: "pass",
+        CallbackSubscribe: func(msg mqtt.Message) {
+            fmt.Printf("Received: %s\n", string(msg.Payload()))
+        },
+    })
+}
 ```
 
 ### Sending Commands
 
 ```go
-// Send popup command
-err := service.Publish("device-123", constants.PUBLISH_TYPE_POPUP, "85021618")
-if err != nil {
-    log.Printf("Error: %v\n", err)
-}
+package main
 
-// Check device status
-err = service.Publish("device-123", constants.PUBLISH_TYPE_CHECK, "")
-if err != nil {
-    log.Printf("Error: %v\n", err)
+import (
+    "log"
+    powerbankSdk "github.com/techpartners-asia/powerbank"
+    "github.com/techpartners-asia/powerbank/constants"
+    powerbankModels "github.com/techpartners-asia/powerbank/models"
+)
+
+func main() {
+    service := powerbankSdk.NewServer(powerbankModels.ServerInput{
+        Host:     "mqtt.example.com",
+        Port:     "1883",
+        Username: "user",
+        Password: "pass",
+    })
+
+    // Send popup command
+    err := service.Publish("device-123", constants.PUBLISH_TYPE_POPUP, "85021618")
+    if err != nil {
+        log.Printf("Error: %v\n", err)
+    }
+
+    // Check device status
+    err = service.Publish("device-123", constants.PUBLISH_TYPE_CHECK, "")
+    if err != nil {
+        log.Printf("Error: %v\n", err)
+    }
 }
 ```
 
