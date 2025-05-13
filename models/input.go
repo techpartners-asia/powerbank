@@ -11,7 +11,7 @@ type (
 		Port              string
 		Username          string
 		Password          string
-		CallbackSubscribe func(msg interface{})
+		CallbackSubscribe func(typ constants.PUBLISH_TYPE, msg interface{})
 		CallbackPublish   func(msg mqtt.Message)
 	}
 

@@ -44,12 +44,12 @@ func NewServer(input powerbankModels.ServerInput) ApiService {
 	// * NOTE * - Subscribe
 	c.Subscribe(string(constants.TOPIC_SUBSCRIBE), 0, func(client mqtt.Client, msg mqtt.Message) {
 
-		res, err := powerbankUtils.ParseResponse(msg)
+		typ, res, err := powerbankUtils.ParseResponse(msg)
 		if err != nil {
 			fmt.Println(err)
 			return
 		}
-		input.CallbackSubscribe(res)
+		input.CallbackSubscribe(typ, res)
 	})
 
 	service := &apiService{

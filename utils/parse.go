@@ -5,6 +5,7 @@ import (
 	"strconv"
 
 	mqtt "github.com/eclipse/paho.mqtt.golang"
+	"github.com/techpartners-asia/powerbank/constants"
 	powerbankModels "github.com/techpartners-asia/powerbank/models"
 )
 
@@ -120,11 +121,11 @@ func ParseCheckResponse(response []byte) (*powerbankModels.PowerBankCheckRespons
 	return checkResponse, nil
 }
 
-func ParseResponse(msg mqtt.Message) (interface{}, error) {
+func ParseResponse(msg mqtt.Message) (constants.PUBLISH_TYPE, interface{}, error) {
 	payload := msg.Payload()
 	if len(payload) < 4 {
 		fmt.Printf("Invalid response length: %d\n", len(payload))
-		return nil, fmt.Errorf("invalid response length: expected at least 4 bytes, got %d", len(payload))
+		return "", nil, fmt.Errorf("invalid response length: expected at least 4 bytes, got %d", len(payload))
 	}
 
 	// Check command type from byte[3]
@@ -134,26 +135,26 @@ func ParseResponse(msg mqtt.Message) (interface{}, error) {
 		response, err := ParseCheckResponse(payload)
 		if err != nil {
 			fmt.Printf("Error parsing check response: %v\n", err)
-			return nil, err
+			return "", nil, err
 		}
-		return response, nil
+		return constants.PUBLISH_TYPE_CHECK, response, nil
 	case 0x31: // Popup command response
 		response, err := ParsePopupPowerBankResponse(payload)
 		if err != nil {
 			fmt.Printf("Error parsing popup response: %v\n", err)
-			return nil, err
+			return "", nil, err
 		}
-		return response, nil
+		return constants.PUBLISH_TYPE_POPUP, response, nil
 	case 0x28: // Return command response
 		response, err := ParseReturnPowerBankResponse(payload)
 		if err != nil {
 			fmt.Printf("Error parsing return response: %v\n", err)
-			return nil, err
+			return "", nil, err
 		}
-		return response, nil
+		return constants.PUBLISH_TYPE_RETURN, response, nil
 	default:
 		fmt.Printf("Unknown command type: 0x%02X\n", cmd)
-		return nil, fmt.Errorf("unknown command type: 0x%02X", cmd)
+		return "", nil, fmt.Errorf("unknown command type: 0x%02X", cmd)
 	}
 
 }
