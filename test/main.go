@@ -1,4 +1,4 @@
-package test
+package main
 
 func main() {
 
@@ -7,14 +7,16 @@ func main() {
 	// 	Port:     "1883",
 	// 	Username: "backend",
 	// 	Password: "Mongol123@",
-	// 	CallbackSubscribe: func(msg interface{}) {
-	// 		fmt.Println(msg)
+	// 	CallbackSubscribe: func(typ constants.PUBLISH_TYPE, clientID string, msg interface{}) {
+	// 		fmt.Println(typ, clientID, msg)
 	// 	},
 
 	// 	CallbackPublish: func(msg mqtt.Message) {
 	// 		fmt.Println(string(msg.Payload()))
 	// 	},
 	// })
+
+	// fmt.Println(service)
 
 	// // service.Publish(powerbankModels.PublishInput{
 	// // 	ClientID:    "864601068412899",

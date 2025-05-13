@@ -11,8 +11,11 @@ type (
 		Port              string
 		Username          string
 		Password          string
-		CallbackSubscribe func(typ constants.PUBLISH_TYPE, msg interface{})
+		CallbackSubscribe func(typ constants.PUBLISH_TYPE, clientID string, msg interface{})
 		CallbackPublish   func(msg mqtt.Message)
+
+		// DB instance
+
 	}
 
 	UserInput struct {

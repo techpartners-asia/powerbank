@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 	"time"
 
 	mqtt "github.com/eclipse/paho.mqtt.golang"
@@ -49,7 +50,10 @@ func NewServer(input powerbankModels.ServerInput) ApiService {
 			fmt.Println(err)
 			return
 		}
-		input.CallbackSubscribe(typ, res)
+
+		deviceID := strings.Split(msg.Topic(), "/")[2]
+
+		input.CallbackSubscribe(typ, deviceID, res)
 	})
 
 	service := &apiService{
