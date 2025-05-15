@@ -91,3 +91,32 @@ type (
 		Verify        byte           // Byte[n+1] - Check code
 	}
 )
+
+func (hole *Hole) GetStateDescription() string {
+	switch hole.State {
+	case 0x00:
+		return "No mobile power supply"
+	case 0x01:
+		return "Power bank is normal"
+	case 0x02:
+		return "Charging abnormality"
+	case 0x03:
+		return "Communication exception"
+	case 0x04:
+		return "KaBao/Damaged"
+	case 0x05:
+		return "The key is forcibly released"
+	case 0x06:
+		return "The solenoid valve did not return to the position when returned"
+	case 0x07:
+		return "Reserved"
+	case 0x08:
+		return "Anti-theft protocol communication failed"
+	case 0x09:
+		return "Typec short circuit"
+	case 0x0A:
+		return "Return failed, battery does not pop out"
+	default:
+		return "Reserved"
+	}
+}
