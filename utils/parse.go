@@ -9,6 +9,92 @@ import (
 	powerbankModels "github.com/techpartners-asia/powerbank/models"
 )
 
+// ParsePowerBankUpload parses byte data into PowerBankUploadResponse
+func ParsePowerBankUploadResponse(data []byte) (*powerbankModels.PowerBankUploadResponse, error) {
+	if len(data) < 4 {
+		return nil, fmt.Errorf("data too short: expected at least 4 bytes, got %d", len(data))
+	}
+
+	resp := &powerbankModels.PowerBankUploadResponse{
+		Head:   data[0],
+		Length: int(data[1])<<8 | int(data[2]), // Combine two bytes into length
+		Cmd:    data[3],
+	}
+
+	// Verify header and command
+	if resp.Head != 0xA8 {
+		return nil, fmt.Errorf("invalid header: expected 0xA8, got 0x%02X", resp.Head)
+	}
+	if resp.Cmd != 0x10 {
+		return nil, fmt.Errorf("invalid command: expected 0x10, got 0x%02X", resp.Cmd)
+	}
+
+	// Calculate expected length
+	expectedLength := resp.Length
+	if len(data) != expectedLength {
+		return nil, fmt.Errorf("invalid data length: expected %d, got %d", expectedLength, len(data))
+	}
+
+	// Parse control boards
+	currentPos := 4                // Start after header, length, and command
+	for currentPos < len(data)-1 { // -1 to leave room for verify byte
+		if currentPos+6 > len(data)-1 {
+			return nil, fmt.Errorf("data too short for control board at position %d", currentPos)
+		}
+
+		board := powerbankModels.ControlBoard{
+			ControlIndex: int(data[currentPos]),
+			Undefined1:   int(data[currentPos+1]),
+			Undefined2:   int(data[currentPos+2]),
+			Temperature:  int(data[currentPos+3]),
+			SoftVersion:  int(data[currentPos+4]),
+			HardVersion:  int(data[currentPos+5]),
+		}
+
+		// Move to position information
+		currentPos += 6
+
+		// Parse holes for this control board
+		for currentPos < len(data)-1 {
+			if currentPos+15 > len(data)-1 {
+				break // Not enough data for another hole
+			}
+
+			hole := powerbankModels.Hole{
+				HoleIndex:     int(data[currentPos]),
+				State:         int(data[currentPos+1]),
+				PowerbankCurr: float64(data[currentPos+2]) / 10.0, // Convert to float with 1 decimal
+				PowerbankVolt: float64(data[currentPos+3]) / 10.0, // Convert to float with 1 decimal
+				Area:          string(data[currentPos+4]),
+				PowerbankSN:   string(data[currentPos+5 : currentPos+9]),
+				SOC:           int(data[currentPos+9]),
+				Temperature:   int(data[currentPos+10]),
+				ChargeVolt:    float64(data[currentPos+11]) / 10.0, // Convert to float with 1 decimal
+				ChargeCurr:    float64(data[currentPos+12]) / 10.0, // Convert to float with 1 decimal
+				SoftVersion:   int(data[currentPos+13]),
+				Sensor:        data[currentPos+14],
+			}
+
+			board.Holes = append(board.Holes, hole)
+			currentPos += 15
+
+			// Check if we've reached the next control board or end
+			if currentPos < len(data)-1 && data[currentPos] == 0x20 || data[currentPos] == 0x30 {
+				break
+			}
+		}
+
+		resp.ControlBoards = append(resp.ControlBoards, board)
+	}
+
+	// Set verify byte
+	if len(data) > 0 {
+		resp.Verify = data[len(data)-1]
+	}
+
+	return resp, nil
+}
+
 func ParseReturnPowerBankResponse(response []byte) (*powerbankModels.PowerBankReturnResponse, error) {
 	if len(response) < 15 {
 		return nil, fmt.Errorf("invalid data length: expected at least 15 bytes, got %d", len(response))

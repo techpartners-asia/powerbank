@@ -82,4 +82,12 @@ type (
 		SoftVersion   int     // Byte[13] - Software version
 		Sensor        byte    // Byte[14] - Position detection
 	}
+
+	PowerBankUploadResponse struct {
+		Head          byte           // Byte[0] - Head code (Default: 0xA8)
+		Length        int            // Byte[1-2] - Packet length
+		Cmd           byte           // Byte[3] - Command name (Default: 0x10)
+		ControlBoards []ControlBoard // Byte[4~n] - Control board information
+		Verify        byte           // Byte[n+1] - Check code
+	}
 )
