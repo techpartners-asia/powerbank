@@ -120,3 +120,113 @@ func (hole *Hole) GetStateDescription() string {
 		return "Reserved"
 	}
 }
+
+func (hole *Hole) GetStatus() string {
+	switch hole.State {
+	case 0x00:
+		return "no-power-supply"
+	case 0x01:
+		return "normal"
+	case 0x02:
+		return "charging-abnormality"
+	case 0x03:
+		return "communication-exception"
+	case 0x04:
+		return "kabao-damaged"
+	case 0x05:
+		return "key-force-release"
+	case 0x06:
+		return "solenoid-valve-not-return"
+	case 0x07:
+		return "reserved"
+	case 0x08:
+		return "anti-theft-protocol-communication-failed"
+	case 0x09:
+		return "typec-short-circuit"
+	case 0x0A:
+		return "return-failed-battery-does-not-pop-out"
+	default:
+		return "reserved"
+	}
+}
+
+func (popup *PowerBankPopupResponse) GetStatus() string {
+
+	switch popup.State {
+	case 0x00:
+		return "popup-failed"
+	case 0x01:
+		return "popup-successful"
+	case 0x02:
+		return "power-supply-charging-abnormally"
+	case 0x03:
+		return "communication-abnormality-first-return-failed"
+	case 0x04:
+		return "slot-cannot-pop-out"
+	case 0x05:
+		return "slot-forcibly-released"
+	case 0x06:
+		return "solenoid-not-returned"
+	case 0x08:
+		return "anti-theft-comm-failed"
+	case 0x11:
+		return "failed-to-obtain-sn"
+	case 0x12:
+		return "popup-complete-motor-home-sn-readable"
+	case 0x13:
+		return "failed-to-obtain-traceback"
+	case 0x14:
+		return "battery-lock-command-failed"
+	case 0x21:
+		return "sn-acquisition-and-motor-failed"
+	case 0x22:
+		return "info-acquisition-and-motor-failed"
+	case 0x23:
+		return "battery-lock-and-motor-failed"
+	case 0x24:
+		return "anti-theft-switch-detection-failed"
+	default:
+		return "unknown-error"
+	}
+}
+
+// GetDescription converts the byte held in popup.State into a
+// human‑readable explanation of what went wrong (or right).
+func (popup *PowerBankPopupResponse) GetDescription() string {
+	switch popup.State {
+	case 0x00:
+		return "Pop‑up failed"
+	case 0x01:
+		return "Pop‑up successful"
+	case 0x02:
+		return "Power‑supply charging abnormally"
+	case 0x03:
+		return "Communication abnormality (first return failed)"
+	case 0x04:
+		return "This slot cannot pop out a mobile power supply normally"
+	case 0x05:
+		return "Slot forcibly released"
+	case 0x06:
+		return "Solenoid valve did not return to home position"
+	case 0x08:
+		return "Anti‑theft protocol communication failed"
+	case 0x11:
+		return "Failed to obtain SN"
+	case 0x12:
+		return "Pop‑up completed; motor is home and SN can be read"
+	case 0x13:
+		return "Failed to obtain traceback information"
+	case 0x14:
+		return "Battery‑lock command failed"
+	case 0x21:
+		return "Failed to obtain SN and motor action failed"
+	case 0x22:
+		return "Failed to obtain all information and motor operation failed"
+	case 0x23:
+		return "Battery‑lock command failed and motor action failed"
+	case 0x24:
+		return "Anti‑theft‑switch detection failed"
+	default:
+		return "Unknown error"
+	}
+}
