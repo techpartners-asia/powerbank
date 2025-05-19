@@ -230,3 +230,30 @@ func (popup *PowerBankPopupResponse) GetDescription() string {
 		return "Unknown error"
 	}
 }
+
+func (rt *PowerBankReturnResponse) GetDescription() string {
+	switch rt.State {
+	case 0x00:
+		return "Return failed"
+	case 0x01:
+		return "Return successful"
+	case 0x11:
+		return "Failed to obtain SN"
+	case 0x12:
+		return "Failed to obtain voltage, temperature, or other information"
+	case 0x13:
+		return "Failed to obtain software and hardware version information"
+	case 0x14:
+		return "Battery‑lock command failed"
+	case 0x21:
+		return "Failed to obtain SN, and motor action failed"
+	case 0x22:
+		return "Failed to obtain voltage, temperature, or other information, and motor action failed"
+	case 0x23:
+		return "Battery‑lock command failed, and motor action failed"
+	case 0x24:
+		return "Anti‑theft switch detection failed (within 5 minutes, an 0x28 self‑test command will be reported)"
+	default:
+		return "Unknown error"
+	}
+}
