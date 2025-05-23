@@ -38,7 +38,6 @@ func (s *userService) AddUser(deviceId string, password string, database string)
 	s.options.Body = map[string]interface{}{
 		"user_id":  deviceId,
 		"password": password,
-		"is_super": false,
 	}
 
 	response, err := s.client.Request(s.options)
