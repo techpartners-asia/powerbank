@@ -34,6 +34,7 @@ func NewUserService(input powerbankModels.UserInput) UserService {
 func (s *userService) AddUser(deviceId string, password string, database string) *powerbankModels.CreateUserResponse {
 
 	s.options.URL = fmt.Sprintf("/api/v5/users/%s/users", database)
+	s.options.Method = "POST"
 	s.options.Body = map[string]interface{}{
 		"user_id":  deviceId,
 		"password": password,
