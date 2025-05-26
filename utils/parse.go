@@ -66,7 +66,7 @@ func ParsePowerBankUploadResponse(data []byte) (*powerbankModels.PowerBankUpload
 				PowerbankCurr: float64(data[currentPos+2]) / 10.0, // Convert to float with 1 decimal
 				PowerbankVolt: float64(data[currentPos+3]) / 10.0, // Convert to float with 1 decimal
 				Area:          string(data[currentPos+4]),
-				PowerbankSN:   string(data[currentPos+5 : currentPos+9]),
+				PowerbankSN:   strconv.FormatUint(uint64(data[currentPos+5])<<24|uint64(data[currentPos+6])<<16|uint64(data[currentPos+7])<<8|uint64(data[currentPos+8]), 10),
 				SOC:           int(data[currentPos+9]),
 				Temperature:   int(data[currentPos+10]),
 				ChargeVolt:    float64(data[currentPos+11]) / 10.0, // Convert to float with 1 decimal
