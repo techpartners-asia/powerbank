@@ -225,7 +225,7 @@ func ParseResponse(msg mqtt.Message) (constants.PUBLISH_TYPE, interface{}, error
 			return "", nil, err
 		}
 		return constants.PUBLISH_TYPE_POPUP, response, nil
-	case 0x28: // Return command response
+	case 0x40: // Return command response
 		response, err := ParseReturnPowerBankResponse(payload)
 		if err != nil {
 			fmt.Printf("Error parsing return response: %v\n", err)
