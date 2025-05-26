@@ -257,3 +257,29 @@ func (rt *PowerBankReturnResponse) GetDescription() string {
 		return "Unknown error"
 	}
 }
+
+func (rt *PowerBankReturnResponse) GetStatus() string {
+	switch rt.State {
+	case 0x00:
+		return "return-failed"
+	case 0x01:
+		return "return-successful"
+	case 0x11:
+		return "failed-to-obtain-sn"
+	case 0x12:
+		return "failed-to-obtain-voltage-temperature-or-other-information"
+	case 0x13:
+		return "failed-to-obtain-software-and-hardware-version-information"
+	case 0x14:
+		return "battery-lock-command-failed"
+	case 0x21:
+		return "failed-to-obtain-sn-and-motor-action-failed"
+	case 0x22:
+		return "failed-to-obtain-voltage-temperature-or-other-information-and-motor-action-failed"
+	case 0x23:
+		return "battery-lock-command-failed-and-motor-action-failed"
+	case 0x24:
+		return "anti-theft-switch-detection-failed"
+	}
+	return "unknown-error"
+}
