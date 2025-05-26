@@ -71,11 +71,16 @@ func (s *apiService) Publish(input powerbankModels.PublishInput) error {
 	switch input.PublishType {
 	case constants.PUBLISH_TYPE_CHECK:
 		payload = (fmt.Sprintf("{\"cmd\":\"%v\"}", constants.PUBLISH_TYPE_CHECK))
+		break
 	case constants.PUBLISH_TYPE_POPUP:
 		payload = (fmt.Sprintf("{\"cmd\":\"%v\",\"data\":%s}", constants.PUBLISH_TYPE_POPUP, input.Data))
+		break
+	case constants.PUBLISH_TYPE_UPLOAD:
+		payload = (fmt.Sprintf("{\"cmd\":\"%v\"}", constants.PUBLISH_TYPE_UPLOAD))
+		break
+	default:
+		return fmt.Errorf("invalid publish type")
 	}
-
-	fmt.Println(payload)
 
 	response := s.client.Publish(fmt.Sprintf(string(constants.TOPIC_PUBLISH), input.ClientID), 0, false, payload)
 	if response.Wait() && response.Error() != nil {
