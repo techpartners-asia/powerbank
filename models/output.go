@@ -1,5 +1,7 @@
 package powerbankModels
 
+import "github.com/techpartners-asia/powerbank/constants"
+
 const (
 	PopupFailed  = 0x00
 	PopupSuccess = 0x01
@@ -121,72 +123,73 @@ func (hole *Hole) GetStateDescription() string {
 	}
 }
 
-func (hole *Hole) GetStatus() string {
+func (hole *Hole) GetStatus() constants.PowerbankStatus {
+
 	switch hole.State {
 	case 0x00:
-		return "no-power-supply"
+		return constants.PowerbankStatus_NoPowerSupply
 	case 0x01:
-		return "normal"
+		return constants.PowerbankStatus_Normal
 	case 0x02:
-		return "charging-abnormality"
+		return constants.PowerbankStatus_ChargingAbnormality
 	case 0x03:
-		return "communication-exception"
+		return constants.PowerbankStatus_CommunicationException
 	case 0x04:
-		return "kabao-damaged"
+		return constants.PowerbankStatus_KabaoDamaged
 	case 0x05:
-		return "key-force-release"
+		return constants.PowerbankStatus_KeyForceRelease
 	case 0x06:
-		return "solenoid-valve-not-return"
+		return constants.PowerbankStatus_SolenoidValveNotReturn
 	case 0x07:
-		return "reserved"
+		return constants.PowerbankStatus_Reserved
 	case 0x08:
-		return "anti-theft-protocol-communication-failed"
+		return constants.PowerbankStatus_AntiTheftProtocolCommunicationFailed
 	case 0x09:
-		return "typec-short-circuit"
+		return constants.PowerbankStatus_TypecShortCircuit
 	case 0x0A:
-		return "return-failed-battery-does-not-pop-out"
+		return constants.PowerbankStatus_ReturnFailedBatteryDoesNotPopOut
 	default:
-		return "reserved"
+		return constants.PowerbankStatus_Reserved
 	}
 }
 
-func (popup *PowerBankPopupResponse) GetStatus() string {
+func (popup *PowerBankPopupResponse) GetStatus() constants.PowerbankStatus {
 
 	switch popup.State {
 	case 0x00:
-		return "popup-failed"
+		return constants.PowerbankStatus_PopupFailed
 	case 0x01:
-		return "popup-successful"
+		return constants.PowerbankStatus_PopupSuccessful
 	case 0x02:
-		return "power-supply-charging-abnormally"
+		return constants.PowerbankStatus_PowerSupplyChargingAbnormally
 	case 0x03:
-		return "communication-abnormality-first-return-failed"
+		return constants.PowerbankStatus_CommunicationAbnormalityFirstReturnFailed
 	case 0x04:
-		return "slot-cannot-pop-out"
+		return constants.PowerbankStatus_SlotCannotPopOut
 	case 0x05:
-		return "slot-forcibly-released"
+		return constants.PowerbankStatus_SlotForciblyReleased
 	case 0x06:
-		return "solenoid-not-returned"
+		return constants.PowerbankStatus_SolenoidNotReturned
 	case 0x08:
-		return "anti-theft-comm-failed"
+		return constants.PowerbankStatus_AntiTheftCommFailed
 	case 0x11:
-		return "failed-to-obtain-sn"
+		return constants.PowerbankStatus_FailedToObtainSn
 	case 0x12:
-		return "popup-complete-motor-home-sn-readable"
+		return constants.PowerbankStatus_PopupCompleteMotorHomeSnReadable
 	case 0x13:
-		return "failed-to-obtain-traceback"
+		return constants.PowerbankStatus_FailedToObtainTraceback
 	case 0x14:
-		return "battery-lock-command-failed"
+		return constants.PowerbankStatus_BatteryLockCommandFailed
 	case 0x21:
-		return "sn-acquisition-and-motor-failed"
+		return constants.PowerbankStatus_SnAcquisitionAndMotorFailed
 	case 0x22:
-		return "info-acquisition-and-motor-failed"
+		return constants.PowerbankStatus_InfoAcquisitionAndMotorFailed
 	case 0x23:
-		return "battery-lock-and-motor-failed"
+		return constants.PowerbankStatus_BatteryLockAndMotorFailed
 	case 0x24:
-		return "anti-theft-switch-detection-failed"
+		return constants.PowerbankStatus_AntiTheftSwitchDetectionFailed
 	default:
-		return "unknown-error"
+		return constants.PowerbankStatus_UnknownError
 	}
 }
 
@@ -258,28 +261,28 @@ func (rt *PowerBankReturnResponse) GetDescription() string {
 	}
 }
 
-func (rt *PowerBankReturnResponse) GetStatus() string {
+func (rt *PowerBankReturnResponse) GetStatus() constants.PowerbankStatus {
 	switch rt.State {
 	case 0x00:
-		return "return-failed"
+		return constants.PowerbankStatus_ReturnFailed
 	case 0x01:
-		return "return-successful"
+		return constants.PowerbankStatus_ReturnSuccessful
 	case 0x11:
-		return "failed-to-obtain-sn"
+		return constants.PowerbankStatus_FailedToObtainSn
 	case 0x12:
-		return "failed-to-obtain-voltage-temperature-or-other-information"
+		return constants.PowerbankStatus_FailedToObtainVoltageTemperatureOrOtherInformation
 	case 0x13:
-		return "failed-to-obtain-software-and-hardware-version-information"
+		return constants.PowerbankStatus_FailedToObtainSoftwareAndHardwareVersionInformation
 	case 0x14:
-		return "battery-lock-command-failed"
+		return constants.PowerbankStatus_BatteryLockCommandFailed
 	case 0x21:
-		return "failed-to-obtain-sn-and-motor-action-failed"
+		return constants.PowerbankStatus_FailedToObtainSnAndMotorActionFailed
 	case 0x22:
-		return "failed-to-obtain-voltage-temperature-or-other-information-and-motor-action-failed"
+		return constants.PowerbankStatus_FailedToObtainVoltageTemperatureOrOtherInformationAndMotorActionFailed
 	case 0x23:
-		return "battery-lock-command-failed-and-motor-action-failed"
+		return constants.PowerbankStatus_BatteryLockCommandFailedAndMotorActionFailed
 	case 0x24:
-		return "anti-theft-switch-detection-failed"
+		return constants.PowerbankStatus_AntiTheftSwitchDetectionFailedAndMotorActionFailed
 	}
-	return "unknown-error"
+	return constants.PowerbankStatus_UnknownError
 }
