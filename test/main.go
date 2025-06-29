@@ -1,15 +1,30 @@
 package main
 
+import (
+	"fmt"
+
+	powerbankSdk "github.com/techpartners-asia/powerbank/api"
+	"github.com/techpartners-asia/powerbank/constants"
+	powerbankModels "github.com/techpartners-asia/powerbank/models"
+)
+
 func main() {
 
-	// service := powerbankSdk.NewServer(powerbankModels.ServerInput{
-	// 	Host:     "103.50.205.106",
-	// 	Port:     "1883",
-	// 	Username: "backend",
-	// 	Password: "Mongol123@",
-	// 	CallbackSubscribe: func(typ constants.PUBLISH_TYPE, clientID string, msg interface{}) {
-	// 		fmt.Println(typ, clientID, msg)
-	// 	},
+	service := powerbankSdk.NewServer(powerbankModels.ServerInput{
+		Host:     "103.50.205.106",
+		Port:     "1883",
+		Username: "backend",
+		Password: "Mongol123@",
+		CallbackSubscribe: func(typ constants.PUBLISH_TYPE, clientID string, msg interface{}) {
+			fmt.Println(typ, clientID, msg)
+		},
+	},
+	)
+
+	service.Publish(powerbankModels.PublishInput{
+		ClientID:    "864601068412899",
+		PublishType: constants.PUBLISH_TYPE_HEALTH_CHECK,
+	})
 
 	// 	CallbackPublish: func(msg mqtt.Message) {
 	// 		fmt.Println(string(msg.Payload()))
@@ -30,5 +45,5 @@ func main() {
 	// })
 
 	// // Keep the program running indefinitely
-	// select {}
+	select {}
 }
