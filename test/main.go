@@ -16,19 +16,19 @@ func main() {
 	// 	},
 	// })
 
-	// fmt.Println(service)
+	// // fmt.Println(service)
 
-	// // service.Publish(powerbankModels.PublishInput{
-	// // 	ClientID:    "864601068412899",
-	// // 	PublishType: constants.PUBLISH_TYPE_POPUP,
-	// // 	Data:        "85021618",
-	// // })
+	// // // service.Publish(powerbankModels.PublishInput{
+	// // // 	ClientID:    "864601068412899",
+	// // // 	PublishType: constants.PUBLISH_TYPE_POPUP,
+	// // // 	Data:        "85021618",
+	// // // })
 
 	// service.Publish(powerbankModels.PublishInput{
-	// 	ClientID:    "864601068412899",
+	// 	ClientID:    "864601069972081",
 	// 	PublishType: constants.PUBLISH_TYPE_CHECK,
 	// })
 
-	// // Keep the program running indefinitely
+	// // // Keep the program running indefinitely
 	// select {}
 }

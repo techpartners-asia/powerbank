@@ -16,22 +16,27 @@ func ParsePowerBankUploadResponse(data []byte) (*powerbankModels.PowerBankUpload
 
 	resp := &powerbankModels.PowerBankUploadResponse{
 		Head:   data[0],
-		Length: int(data[1])<<8 | int(data[2]),
+		Length: int(data[1])<<8 | int(data[2]), // Combine two bytes into length
 		Cmd:    data[3],
 	}
 
+	// Verify header and command
 	if resp.Head != 0xA8 {
 		return nil, fmt.Errorf("invalid header: expected 0xA8, got 0x%02X", resp.Head)
 	}
 	if resp.Cmd != 0x10 {
 		return nil, fmt.Errorf("invalid command: expected 0x10, got 0x%02X", resp.Cmd)
 	}
-	if len(data) != resp.Length {
-		return nil, fmt.Errorf("data length mismatch: expected %d, got %d", resp.Length, len(data))
-	}
 
-	currentPos := 4
-	for currentPos+6 <= len(data)-1 { // Ensure at least 6 bytes for control board
+	currentPos := 4 // start parsing after header, length, cmd
+
+	for {
+		// Check if there is enough data for control board + 4 holes + verify byte at end
+		if currentPos+6+4*15 > len(data)-1 {
+			break
+		}
+
+		// Parse control board
 		board := powerbankModels.ControlBoard{
 			ControlIndex: int(data[currentPos]),
 			Undefined1:   int(data[currentPos+1]),
@@ -42,30 +47,26 @@ func ParsePowerBankUploadResponse(data []byte) (*powerbankModels.PowerBankUpload
 		}
 		currentPos += 6
 
-		holes := make([]powerbankModels.Hole, 0)
-
-		for currentPos+15 <= len(data)-1 {
-			// Check for next control board based on known pattern: address 0x10, 0x20, 0x30
-			if data[currentPos] == 0x10 || data[currentPos] == 0x20 || data[currentPos] == 0x30 {
-				// Additional sanity check: next 6 bytes should not exceed length
-				if currentPos+6 <= len(data)-1 {
-					break
-				}
-			}
-
+		// Parse exactly 4 holes for this control board
+		holes := make([]powerbankModels.Hole, 0, 4)
+		for i := 0; i < 4; i++ {
 			hole := powerbankModels.Hole{
 				HoleIndex:     int(data[currentPos]),
 				State:         int(data[currentPos+1]),
 				PowerbankCurr: float64(data[currentPos+2]) / 10.0,
 				PowerbankVolt: float64(data[currentPos+3]) / 10.0,
 				Area:          int(data[currentPos+4]),
-				PowerbankSN:   strconv.FormatUint(uint64(data[currentPos+5])<<24|uint64(data[currentPos+6])<<16|uint64(data[currentPos+7])<<8|uint64(data[currentPos+8]), 10),
-				SOC:           int(data[currentPos+9]),
-				Temperature:   int(data[currentPos+10]),
-				ChargeVolt:    float64(data[currentPos+11]) / 10.0,
-				ChargeCurr:    float64(data[currentPos+12]) / 10.0,
-				SoftVersion:   int(data[currentPos+13]),
-				Sensor:        data[currentPos+14],
+				PowerbankSN: strconv.FormatUint(
+					uint64(data[currentPos+5])<<24|
+						uint64(data[currentPos+6])<<16|
+						uint64(data[currentPos+7])<<8|
+						uint64(data[currentPos+8]), 10),
+				SOC:         int(data[currentPos+9]),
+				Temperature: int(data[currentPos+10]),
+				ChargeVolt:  float64(data[currentPos+11]) / 10.0,
+				ChargeCurr:  float64(data[currentPos+12]) / 10.0,
+				SoftVersion: int(data[currentPos+13]),
+				Sensor:      data[currentPos+14],
 			}
 			holes = append(holes, hole)
 			currentPos += 15
@@ -75,6 +76,7 @@ func ParsePowerBankUploadResponse(data []byte) (*powerbankModels.PowerBankUpload
 		resp.ControlBoards = append(resp.ControlBoards, board)
 	}
 
+	// Set verify byte (last byte)
 	if len(data) > 0 {
 		resp.Verify = data[len(data)-1]
 	}
@@ -140,7 +142,7 @@ func ParseCheckResponse(response []byte) (*powerbankModels.PowerBankCheckRespons
 		return nil, fmt.Errorf("invalid data length: expected at least 9 bytes, got %d", len(response))
 	}
 
-	checkResponse := &powerbankModels.PowerBankCheckResponse{
+	resp := &powerbankModels.PowerBankCheckResponse{
 		Head:   response[0],
 		Length: int(response[1])<<8 | int(response[2]),
 		Cmd:    response[3],
@@ -149,8 +151,14 @@ func ParseCheckResponse(response []byte) (*powerbankModels.PowerBankCheckRespons
 	offset := 4
 	controlBoards := make([]powerbankModels.ControlBoard, 0)
 
-	for offset+6 <= len(response)-1 { // Ensure at least 6 bytes for control board
-		controlBoard := powerbankModels.ControlBoard{
+	for {
+		// Check if enough data left for control board + 4 holes + verify byte
+		if offset+6+4*15 > len(response)-1 {
+			break // not enough bytes left to parse another control board + holes
+		}
+
+		// Parse control board
+		cb := powerbankModels.ControlBoard{
 			ControlIndex: int(response[offset]),
 			Undefined1:   int(response[offset+1]),
 			Undefined2:   int(response[offset+2]),
@@ -160,41 +168,40 @@ func ParseCheckResponse(response []byte) (*powerbankModels.PowerBankCheckRespons
 		}
 		offset += 6
 
-		holes := make([]powerbankModels.Hole, 0)
-		for offset+15 <= len(response)-1 {
-			// Check if next 6 bytes look like a control board start
-			// Based on your example, valid control board addresses are 0x10, 0x20, 0x30
-			if response[offset] == 0x10 || response[offset] == 0x20 || response[offset] == 0x30 {
-				// Additional sanity checks possible here
-				break
-			}
+		holes := make([]powerbankModels.Hole, 0, 4)
 
+		// Parse exactly 4 holes per control board
+		for i := 0; i < 4; i++ {
 			hole := powerbankModels.Hole{
 				HoleIndex:     int(response[offset]),
 				State:         int(response[offset+1]),
-				PowerbankCurr: float64(response[offset+2]) / 10,
-				PowerbankVolt: float64(response[offset+3]) / 10,
+				PowerbankCurr: float64(response[offset+2]) / 10.0,
+				PowerbankVolt: float64(response[offset+3]) / 10.0,
 				Area:          int(response[offset+4]),
-				PowerbankSN:   strconv.FormatUint(uint64(response[offset+5])<<24|uint64(response[offset+6])<<16|uint64(response[offset+7])<<8|uint64(response[offset+8]), 10),
-				SOC:           int(response[offset+9]),
-				Temperature:   int(response[offset+10]),
-				ChargeVolt:    float64(response[offset+11]) / 10,
-				ChargeCurr:    float64(response[offset+12]) / 10,
-				SoftVersion:   int(response[offset+13]),
-				Sensor:        response[offset+14],
+				PowerbankSN: strconv.FormatUint(
+					uint64(response[offset+5])<<24|
+						uint64(response[offset+6])<<16|
+						uint64(response[offset+7])<<8|
+						uint64(response[offset+8]), 10),
+				SOC:         int(response[offset+9]),
+				Temperature: int(response[offset+10]),
+				ChargeVolt:  float64(response[offset+11]) / 10.0,
+				ChargeCurr:  float64(response[offset+12]) / 10.0,
+				SoftVersion: int(response[offset+13]),
+				Sensor:      response[offset+14],
 			}
 			holes = append(holes, hole)
 			offset += 15
 		}
 
-		controlBoard.Holes = holes
-		controlBoards = append(controlBoards, controlBoard)
+		cb.Holes = holes
+		controlBoards = append(controlBoards, cb)
 	}
 
-	checkResponse.ControlBoards = controlBoards
-	checkResponse.Verify = response[len(response)-1]
+	resp.ControlBoards = controlBoards
+	resp.Verify = response[len(response)-1]
 
-	return checkResponse, nil
+	return resp, nil
 }
 
 func ParseResponse(msg mqtt.Message) (constants.PUBLISH_TYPE, interface{}, error) {
@@ -203,6 +210,8 @@ func ParseResponse(msg mqtt.Message) (constants.PUBLISH_TYPE, interface{}, error
 		fmt.Printf("Invalid response length: %d\n", len(payload))
 		return "", nil, fmt.Errorf("invalid response length: expected at least 4 bytes, got %d", len(payload))
 	}
+
+	fmt.Printf("Payload: % X\n", payload)
 
 	// Check command type from byte[3]
 	cmd := payload[3]
