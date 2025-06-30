@@ -34,7 +34,7 @@ type (
 		State        int     // Byte[6] - Return status
 		Undefined1   int     // Byte[7] - Reserved 1 (Default: 0x00)
 		Undefined2   int     // Byte[8] - Reserved 2 (Default: 0x00)
-		Area         string  // Byte[9] - Area code
+		Area         int     // Byte[9] - Area code
 		PowerbankSN  string  // Byte[10-13] - Power bank SN
 		SOC          int     // Byte[14] - Power (0-255%)
 		Temperature  int     // Byte[15] - Temperature (0-100℃)
@@ -75,7 +75,7 @@ type (
 		State         int     // Byte[1] - State information
 		PowerbankCurr float64 // Byte[2] - Power bank current
 		PowerbankVolt float64 // Byte[3] - Power bank voltage
-		Area          string  // Byte[4] - Area code
+		Area          int     // Byte[4] - Area code
 		PowerbankSN   string  // Byte[5-8] - Power bank SN
 		SOC           int     // Byte[9] - Battery percentage
 		Temperature   int     // Byte[10] - Temperature
