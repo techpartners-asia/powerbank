@@ -13,10 +13,23 @@ const (
 type PUBLISH_TYPE string
 
 const (
-	PUBLISH_TYPE_POPUP  PUBLISH_TYPE = "popup_sn"
-	PUBLISH_TYPE_CHECK  PUBLISH_TYPE = "check"
-	PUBLISH_TYPE_UPLOAD PUBLISH_TYPE = "upload_all"
-	PUBLISH_TYPE_RETURN PUBLISH_TYPE = "return"
+	PUBLISH_TYPE_POPUP        PUBLISH_TYPE = "popup_sn"
+	PUBLISH_TYPE_CHECK        PUBLISH_TYPE = "check"
+	PUBLISH_TYPE_UPLOAD       PUBLISH_TYPE = "upload_all"
+	PUBLISH_TYPE_RETURN       PUBLISH_TYPE = "return"
+	PUBLISH_TYPE_HEALTH_CHECK PUBLISH_TYPE = "health_check"
+)
+
+type CabinetSignal string
+
+const (
+	CabinetSignal_Weak        CabinetSignal = "weak"
+	CabinetSignal_Normal      CabinetSignal = "normal"
+	CabinetSignal_Better      CabinetSignal = "better"
+	CabinetSignal_NoNetwork   CabinetSignal = "no-network"
+	CabinetSignal_NoPower     CabinetSignal = "no-power"
+	CabinetSignal_Charging    CabinetSignal = "charging"
+	CabinetSignal_Discharging CabinetSignal = "discharging"
 )
 
 type PowerbankStatus string

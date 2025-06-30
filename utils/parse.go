@@ -201,6 +201,22 @@ func ParseCheckResponse(response []byte) (*powerbankModels.PowerBankCheckRespons
 	return checkResponse, nil
 }
 
+func ParseHealthCheckResponse(msg mqtt.Message) (*powerbankModels.PowerBankHealthCheckResponse, error) {
+	response := msg.Payload()
+	if len(response) < 9 {
+		return nil, fmt.Errorf("invalid data length: expected at least 9 bytes, got %d", len(response))
+	}
+
+	return &powerbankModels.PowerBankHealthCheckResponse{
+		Head:         response[0],
+		Length:       int(response[1]<<8 | response[2]),
+		Cmd:          response[3],
+		ControlIndex: int(response[4]),
+		Signal:       string(response[5:]),
+		Verify:       response[len(response)-1],
+	}, nil
+}
+
 func ParseResponse(msg mqtt.Message) (constants.PUBLISH_TYPE, interface{}, error) {
 	payload := msg.Payload()
 	if len(payload) < 4 {
@@ -232,6 +248,13 @@ func ParseResponse(msg mqtt.Message) (constants.PUBLISH_TYPE, interface{}, error
 			return "", nil, err
 		}
 		return constants.PUBLISH_TYPE_RETURN, response, nil
+	// case 0x7A: // Health check command response
+	// 	response, err := ParseHealthCheckResponse(payload)
+	// 	if err != nil {
+	// 		fmt.Printf("Error parsing health check response: %v\n", err)
+	// 		return "", nil, err
+	// 	}
+	// 	return constants.PUBLISH_TYPE_HEALTH_CHECK, response, nil
 	default:
 		fmt.Printf("Unknown command type: 0x%02X\n", cmd)
 		return "", nil, fmt.Errorf("unknown command type: 0x%02X", cmd)

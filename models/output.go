@@ -1,6 +1,11 @@
 package powerbankModels
 
-import "github.com/techpartners-asia/powerbank/constants"
+import (
+	"strconv"
+	"strings"
+
+	"github.com/techpartners-asia/powerbank/constants"
+)
 
 const (
 	PopupFailed  = 0x00
@@ -92,7 +97,189 @@ type (
 		ControlBoards []ControlBoard // Byte[4~n] - Control board information
 		Verify        byte           // Byte[n+1] - Check code
 	}
+	PowerBankHealthCheckResponse struct {
+		Head         byte   // Byte[0] - Head code (Default: 0xA8)
+		Length       int    // Byte[1-2] - Packet length
+		Cmd          byte   // Byte[3] - Command name (Default: 0x7A)
+		ControlIndex int    // Byte[4] - Control board address
+		Signal       string // Byte[5-n] - Signal value
+		Verify       byte   // Byte[n+1] - Check code
+	}
 )
+
+func (healthCheck *PowerBankHealthCheckResponse) GetSignalStrength() constants.CabinetSignal {
+	// Parse the signal string which is in format "CSQ:26;BP:0"
+	// Extract the CSQ value (signal strength)
+
+	// If signal is "99", it means no network
+	if healthCheck.Signal == "99" {
+		return constants.CabinetSignal_NoNetwork
+	}
+
+	// Try to parse CSQ value from the signal string
+	// The signal format is typically "CSQ:26;BP:0" where 26 is the CSQ value
+	if len(healthCheck.Signal) > 0 {
+		// Look for "CSQ:" prefix
+		if len(healthCheck.Signal) >= 4 && healthCheck.Signal[:4] == "CSQ:" {
+			// Extract the number after "CSQ:"
+			csqStr := healthCheck.Signal[4:]
+			// Find the semicolon or end of string
+			if semicolonIndex := strings.Index(csqStr, ";"); semicolonIndex != -1 {
+				csqStr = csqStr[:semicolonIndex]
+			}
+
+			// Convert to integer
+			if csq, err := strconv.Atoi(csqStr); err == nil {
+				// Map CSQ value to signal strength based on the table:
+				// CSQ signal: 99, 0~12, 13~16, 17~20, 21~25, 26~31
+				// description: No network, Very poor, Poor, Average, Good, Very good
+				// Signal bars: Offline, 0, 1, 2, 3, 4
+
+				switch {
+				case csq == 99:
+					return constants.CabinetSignal_NoNetwork
+				case csq >= 0 && csq <= 12:
+					return constants.CabinetSignal_Weak
+				case csq >= 13 && csq <= 16:
+					return constants.CabinetSignal_Weak
+				case csq >= 17 && csq <= 20:
+					return constants.CabinetSignal_Normal
+				case csq >= 21 && csq <= 25:
+					return constants.CabinetSignal_Better
+				case csq >= 26 && csq <= 31:
+					return constants.CabinetSignal_Better
+				default:
+					return constants.CabinetSignal_NoNetwork
+				}
+			}
+		}
+
+		// If the signal doesn't match expected format, try to parse as direct number
+		if csq, err := strconv.Atoi(healthCheck.Signal); err == nil {
+			switch {
+			case csq == 99:
+				return constants.CabinetSignal_NoNetwork
+			case csq >= 0 && csq <= 12:
+				return constants.CabinetSignal_Weak
+			case csq >= 13 && csq <= 16:
+				return constants.CabinetSignal_Weak
+			case csq >= 17 && csq <= 20:
+				return constants.CabinetSignal_Normal
+			case csq >= 21 && csq <= 25:
+				return constants.CabinetSignal_Better
+			case csq >= 26 && csq <= 31:
+				return constants.CabinetSignal_Better
+			default:
+				return constants.CabinetSignal_NoNetwork
+			}
+		}
+	}
+
+	// Default fallback
+	return constants.CabinetSignal_NoNetwork
+}
+
+// GetCSQValue extracts the CSQ (signal strength) value from the signal string
+// Returns -1 if parsing fails
+func (healthCheck *PowerBankHealthCheckResponse) GetCSQValue() int {
+	if len(healthCheck.Signal) == 0 {
+		return -1
+	}
+
+	// If signal is "99", return 99
+	if healthCheck.Signal == "99" {
+		return 99
+	}
+
+	// Try to parse CSQ value from the signal string format "CSQ:26;BP:0"
+	if len(healthCheck.Signal) >= 4 && healthCheck.Signal[:4] == "CSQ:" {
+		csqStr := healthCheck.Signal[4:]
+		if semicolonIndex := strings.Index(csqStr, ";"); semicolonIndex != -1 {
+			csqStr = csqStr[:semicolonIndex]
+		}
+
+		if csq, err := strconv.Atoi(csqStr); err == nil {
+			return csq
+		}
+	}
+
+	// Try to parse as direct number
+	if csq, err := strconv.Atoi(healthCheck.Signal); err == nil {
+		return csq
+	}
+
+	return -1
+}
+
+// GetBackupPowerStatus extracts the backup power status from the signal string
+// Returns -1 if parsing fails
+func (healthCheck *PowerBankHealthCheckResponse) GetBackupPowerStatus() int {
+	if len(healthCheck.Signal) == 0 {
+		return -1
+	}
+
+	// Look for "BP:" in the signal string
+	bpIndex := strings.Index(healthCheck.Signal, "BP:")
+	if bpIndex == -1 {
+		return -1
+	}
+
+	// Extract the number after "BP:"
+	bpStr := healthCheck.Signal[bpIndex+3:]
+	if semicolonIndex := strings.Index(bpStr, ";"); semicolonIndex != -1 {
+		bpStr = bpStr[:semicolonIndex]
+	}
+
+	if bp, err := strconv.Atoi(bpStr); err == nil {
+		return bp
+	}
+
+	return -1
+}
+
+// GetSignalDescription returns a human-readable description of the signal strength
+func (healthCheck *PowerBankHealthCheckResponse) GetSignalDescription() string {
+	csq := healthCheck.GetCSQValue()
+
+	switch {
+	case csq == 99:
+		return "No network"
+	case csq >= 0 && csq <= 12:
+		return "Very poor"
+	case csq >= 13 && csq <= 16:
+		return "Poor"
+	case csq >= 17 && csq <= 20:
+		return "Average"
+	case csq >= 21 && csq <= 25:
+		return "Good"
+	case csq >= 26 && csq <= 31:
+		return "Very good"
+	default:
+		return "Unknown"
+	}
+}
+
+// GetSignalBars returns the number of signal bars (0-4) based on CSQ value
+func (healthCheck *PowerBankHealthCheckResponse) GetSignalBars() int {
+	csq := healthCheck.GetCSQValue()
+
+	switch {
+	case csq == 99:
+		return 0 // Offline
+	case csq >= 0 && csq <= 12:
+		return 0
+	case csq >= 13 && csq <= 16:
+		return 1
+	case csq >= 17 && csq <= 20:
+		return 2
+	case csq >= 21 && csq <= 25:
+		return 3
+	case csq >= 26 && csq <= 31:
+		return 4
+	default:
+		return 0
+	}
+}
 
 func (hole *Hole) GetStateDescription() string {
 	switch hole.State {
