@@ -85,20 +85,13 @@ func ParsePowerBankUploadResponse(data []byte) (*powerbankModels.PowerBankUpload
 }
 
 func ParseReturnPowerBankResponse(response []byte) (*powerbankModels.PowerBankReturnResponse, error) {
-	if len(response) < 16 {
-		return nil, fmt.Errorf("invalid data length: expected at least 16 bytes, got %d", len(response))
-	}
-
-	packetLength := int(response[1])<<8 | int(response[2])
-	expectedTotalLength := packetLength + 1 // packet length excludes head byte
-
-	if len(response) != expectedTotalLength {
-		return nil, fmt.Errorf("data length mismatch: expected %d, got %d", expectedTotalLength, len(response))
+	if len(response) < 15 {
+		return nil, fmt.Errorf("invalid data length: expected at least 15 bytes, got %d", len(response))
 	}
 
 	return &powerbankModels.PowerBankReturnResponse{
 		Head:         response[0],
-		Length:       packetLength,
+		Length:       int(response[1]<<8 | response[2]),
 		Cmd:          response[3],
 		ControlIndex: int(response[4]),
 		HoleIndex:    int(response[5]),
@@ -111,24 +104,13 @@ func ParseReturnPowerBankResponse(response []byte) (*powerbankModels.PowerBankRe
 	}, nil
 }
 func ParsePopupPowerBankResponse(response []byte) (*powerbankModels.PowerBankPopupResponse, error) {
-	if len(response) < 4 {
-		return nil, fmt.Errorf("data too short: expected at least 4 bytes, got %d", len(response))
-	}
-
-	packetLength := int(response[1])<<8 | int(response[2])
-	expectedTotalLength := packetLength + 1 // Length excludes Head
-
-	if len(response) != expectedTotalLength {
-		return nil, fmt.Errorf("invalid data length: expected %d, got %d", expectedTotalLength, len(response))
-	}
-
-	if packetLength < 9 {
-		return nil, fmt.Errorf("invalid packet length: expected at least 9, got %d", packetLength)
+	if len(response) < 9 {
+		return nil, fmt.Errorf("invalid data length: expected at least 9 bytes, got %d", len(response))
 	}
 
 	return &powerbankModels.PowerBankPopupResponse{
 		Head:          response[0],
-		Length:        packetLength,
+		Length:        int(response[1]<<8 | response[2]),
 		Cmd:           response[3],
 		ControlIndex:  int(response[4]),
 		PowerbankSN:   strconv.FormatUint(uint64(response[5])<<24|uint64(response[6])<<16|uint64(response[7])<<8|uint64(response[8]), 10),
