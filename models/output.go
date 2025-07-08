@@ -1,6 +1,10 @@
 package powerbankModels
 
-import "github.com/techpartners-asia/powerbank/constants"
+import (
+	"time"
+
+	"github.com/techpartners-asia/powerbank/constants"
+)
 
 const (
 	PopupFailed  = 0x00
@@ -11,6 +15,60 @@ const (
 )
 
 type (
+	GetUserResponse struct {
+		Listener                         string      `json:"listener"`
+		SubscriptionsMax                 string      `json:"subscriptions_max"`
+		SendCnt                          int         `json:"send_cnt"`
+		MailboxLen                       int         `json:"mailbox_len"`
+		Port                             int         `json:"port"`
+		InflightCnt                      int         `json:"inflight_cnt"`
+		SendMsgDropped                   int         `json:"send_msg.dropped"`
+		CleanStart                       bool        `json:"clean_start"`
+		MqueueMax                        int         `json:"mqueue_max"`
+		RecvCnt                          int         `json:"recv_cnt"`
+		ExpiryInterval                   int         `json:"expiry_interval"`
+		MqueueLen                        int         `json:"mqueue_len"`
+		ProtoVer                         int         `json:"proto_ver"`
+		SendMsg                          int         `json:"send_msg"`
+		SendPkt                          int         `json:"send_pkt"`
+		SendMsgDroppedExpired            int         `json:"send_msg.dropped.expired"`
+		IsBridge                         bool        `json:"is_bridge"`
+		SendMsgQos2                      int         `json:"send_msg.qos2"`
+		MqueueDropped                    int         `json:"mqueue_dropped"`
+		AwaitingRelCnt                   int         `json:"awaiting_rel_cnt"`
+		AwaitingRelMax                   int         `json:"awaiting_rel_max"`
+		EnableAuthn                      bool        `json:"enable_authn"`
+		SendMsgQos1                      int         `json:"send_msg.qos1"`
+		HeapSize                         int         `json:"heap_size"`
+		IsPersistent                     bool        `json:"is_persistent"`
+		Keepalive                        int         `json:"keepalive"`
+		RecvMsgDroppedAwaitPubrelTimeout int         `json:"recv_msg.dropped.await_pubrel_timeout"`
+		SendMsgDroppedTooLarge           int         `json:"send_msg.dropped.too_large"`
+		RecvMsgQos1                      int         `json:"recv_msg.qos1"`
+		SendMsgQos0                      int         `json:"send_msg.qos0"`
+		RecvMsgQos2                      int         `json:"recv_msg.qos2"`
+		RecvOct                          int         `json:"recv_oct"`
+		SendOct                          int         `json:"send_oct"`
+		ConnectedAt                      time.Time   `json:"connected_at"`
+		Connected                        bool        `json:"connected"`
+		RecvMsgDropped                   int         `json:"recv_msg.dropped"`
+		SendMsgDroppedQueueFull          int         `json:"send_msg.dropped.queue_full"`
+		IpAddress                        string      `json:"ip_address"`
+		Node                             string      `json:"node"`
+		Reductions                       int         `json:"reductions"`
+		Username                         interface{} `json:"username"`
+		Mountpoint                       interface{} `json:"mountpoint"`
+		RecvPkt                          int         `json:"recv_pkt"`
+		InflightMax                      int         `json:"inflight_max"`
+		SubscriptionsCnt                 int         `json:"subscriptions_cnt"`
+		ProtoName                        string      `json:"proto_name"`
+		ClientID                         string      `json:"clientid"`
+		Durable                          bool        `json:"durable"`
+		RecvMsgQos0                      int         `json:"recv_msg.qos0"`
+		Peerport                         int         `json:"peerport"`
+		RecvMsg                          int         `json:"recv_msg"`
+		CreatedAt                        time.Time   `json:"created_at"`
+	}
 
 	// PowerBankPopupResponse represents the byte protocol response for power bank pop-up
 	PowerBankPopupResponse struct {

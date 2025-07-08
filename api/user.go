@@ -9,6 +9,7 @@ import (
 
 type UserService interface {
 	AddUser(deviceId string, password string, database string) *powerbankModels.CreateUserResponse
+	GetUser(deviceId string) *powerbankModels.GetUserResponse
 }
 
 type userService struct {
@@ -47,6 +48,27 @@ func (s *userService) AddUser(deviceId string, password string, database string)
 	}
 
 	var data powerbankModels.CreateUserResponse
+	if err := response.JSON(&data); err != nil {
+		return nil
+	}
+
+	fmt.Println(data)
+
+	return &data
+}
+
+func (s *userService) GetUser(deviceId string) *powerbankModels.GetUserResponse {
+
+	s.options.URL = fmt.Sprintf("/api/v5/clients/%s", deviceId)
+	s.options.Method = "GET"
+
+	response, err := s.client.Request(s.options)
+	if err != nil {
+		fmt.Println(err)
+		return nil
+	}
+
+	var data powerbankModels.GetUserResponse
 	if err := response.JSON(&data); err != nil {
 		return nil
 	}
