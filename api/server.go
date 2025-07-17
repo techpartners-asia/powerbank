@@ -56,6 +56,26 @@ func NewServer(input powerbankModels.ServerInput) ApiService {
 		input.CallbackSubscribe(typ, deviceID, res)
 	})
 
+	c.Subscribe(string("/powerbank/+/user/heart"), 0, func(client mqtt.Client, msg mqtt.Message) {
+		deviceID := strings.Split(msg.Topic(), "/")[2]
+
+		fmt.Println(deviceID)
+
+		fmt.Printf("MSG: % X\n", msg.Payload())
+
+		res, err := powerbankUtils.ParseHealthCheckResponse(msg)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+
+		fmt.Println(res.GetSignalStrength())
+		fmt.Println(res.GetBackupPowerStatus())
+
+		fmt.Println(res, deviceID)
+		// input.CallbackHealthCheck(deviceID)
+	})
+
 	service := &apiService{
 		client: c,
 	}
@@ -67,23 +87,31 @@ func NewServer(input powerbankModels.ServerInput) ApiService {
 func (s *apiService) Publish(input powerbankModels.PublishInput) error {
 
 	var payload string
+	var topic string
 
 	switch input.PublishType {
 	case constants.PUBLISH_TYPE_CHECK:
 		payload = (fmt.Sprintf("{\"cmd\":\"%v\"}", constants.PUBLISH_TYPE_CHECK))
+		topic = fmt.Sprintf(string(constants.TOPIC_PUBLISH), input.ClientID)
 		break
 	case constants.PUBLISH_TYPE_POPUP:
 		payload = (fmt.Sprintf("{\"cmd\":\"%v\",\"data\":\"%v\"}", constants.PUBLISH_TYPE_POPUP, input.Data))
+		topic = fmt.Sprintf(string(constants.TOPIC_PUBLISH), input.ClientID)
 		break
 	case constants.PUBLISH_TYPE_UPLOAD:
 		payload = (fmt.Sprintf("{\"cmd\":\"%v\"}", constants.PUBLISH_TYPE_UPLOAD))
+		topic = fmt.Sprintf(string(constants.TOPIC_PUBLISH), input.ClientID)
+		break
+	case constants.PUBLISH_TYPE_HEALTH_CHECK:
+		payload = ""
+		topic = fmt.Sprintf(string(constants.TOPIC_HEALTH_CHECK), input.ClientID)
 		break
 
 	default:
 		return fmt.Errorf("invalid publish type")
 	}
 
-	response := s.client.Publish(fmt.Sprintf(string(constants.TOPIC_PUBLISH), input.ClientID), 0, false, payload)
+	response := s.client.Publish(topic, 0, false, payload)
 	if response.Wait() && response.Error() != nil {
 		log.Fatal(response.Error())
 		return response.Error()
