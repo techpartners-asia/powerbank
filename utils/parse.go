@@ -10,13 +10,13 @@ import (
 )
 
 func ParsePowerBankUploadResponse(data []byte) (*powerbankModels.PowerBankUploadResponse, error) {
-	if len(data) < 4 {
-		return nil, fmt.Errorf("data too short: expected at least 4 bytes, got %d", len(data))
+	if len(data) < 5 {
+		return nil, fmt.Errorf("invalid data length: expected at least 5 bytes, got %d", len(data))
 	}
 
 	resp := &powerbankModels.PowerBankUploadResponse{
 		Head:   data[0],
-		Length: int(data[1])<<8 | int(data[2]), // Combine two bytes into length
+		Length: int(data[1])<<8 | int(data[2]),
 		Cmd:    data[3],
 	}
 
@@ -28,55 +28,57 @@ func ParsePowerBankUploadResponse(data []byte) (*powerbankModels.PowerBankUpload
 		return nil, fmt.Errorf("invalid command: expected 0x10, got 0x%02X", resp.Cmd)
 	}
 
-	currentPos := 4 // start parsing after header, length, cmd
+	pos := 4 // Start after header, length, cmd
 
-	for {
-		// Check if there is enough data for control board + 4 holes + verify byte at end
-		if currentPos+6+4*15 > len(data)-1 {
+	// Parse until we reach the verification byte (last byte)
+	for pos < len(data)-1 {
+		// Check if we have enough bytes for a control board (6 bytes)
+		if pos+6 > len(data)-1 {
 			break
 		}
 
-		// Parse control board
-		board := powerbankModels.ControlBoard{
-			ControlIndex: int(data[currentPos]),
-			Undefined1:   int(data[currentPos+1]),
-			Undefined2:   int(data[currentPos+2]),
-			Temperature:  int(data[currentPos+3]),
-			SoftVersion:  int(data[currentPos+4]),
-			HardVersion:  int(data[currentPos+5]),
+		// Parse Control Board (6 bytes)
+		cb := powerbankModels.ControlBoard{
+			ControlIndex: int(data[pos]),
+			Undefined1:   int(data[pos+1]),
+			Undefined2:   int(data[pos+2]),
+			Temperature:  int(data[pos+3]),
+			SoftVersion:  int(data[pos+4]),
+			HardVersion:  int(data[pos+5]),
 		}
-		currentPos += 6
+		pos += 6
 
-		// Parse exactly 4 holes for this control board
-		holes := make([]powerbankModels.Hole, 0, 4)
-		for i := 0; i < 4; i++ {
-			hole := powerbankModels.Hole{
-				HoleIndex:     int(data[currentPos]),
-				State:         int(data[currentPos+1]),
-				PowerbankCurr: float64(data[currentPos+2]) / 10.0,
-				PowerbankVolt: float64(data[currentPos+3]) / 10.0,
-				Area:          int(data[currentPos+4]),
-				PowerbankSN: strconv.FormatUint(
-					uint64(data[currentPos+5])<<24|
-						uint64(data[currentPos+6])<<16|
-						uint64(data[currentPos+7])<<8|
-						uint64(data[currentPos+8]), 10),
-				SOC:         int(data[currentPos+9]),
-				Temperature: int(data[currentPos+10]),
-				ChargeVolt:  float64(data[currentPos+11]) / 10.0,
-				ChargeCurr:  float64(data[currentPos+12]) / 10.0,
-				SoftVersion: int(data[currentPos+13]),
-				Sensor:      data[currentPos+14],
+		holes := make([]powerbankModels.Hole, 0)
+
+		// Parse holes for this control board (4 holes per control board, 15 bytes each)
+		for i := 0; i < 4 && pos+15 <= len(data)-1; i++ {
+			h := powerbankModels.Hole{
+				HoleIndex:     int(data[pos]),
+				State:         int(data[pos+1]),
+				PowerbankCurr: float64(data[pos+2]) / 10,
+				PowerbankVolt: float64(data[pos+3]) / 10,
+				Area:          int(data[pos+4]),
+				PowerbankSN: fmt.Sprintf("%d",
+					uint32(data[pos+5])<<24|
+						uint32(data[pos+6])<<16|
+						uint32(data[pos+7])<<8|
+						uint32(data[pos+8])),
+				SOC:         int(data[pos+9]),
+				Temperature: int(data[pos+10]),
+				ChargeVolt:  float64(data[pos+11]) / 10,
+				ChargeCurr:  float64(data[pos+12]) / 10,
+				SoftVersion: int(data[pos+13]),
+				Sensor:      data[pos+14],
 			}
-			holes = append(holes, hole)
-			currentPos += 15
+			holes = append(holes, h)
+			pos += 15
 		}
 
-		board.Holes = holes
-		resp.ControlBoards = append(resp.ControlBoards, board)
+		cb.Holes = holes
+		resp.ControlBoards = append(resp.ControlBoards, cb)
 	}
 
-	// Set verify byte (last byte)
+	// Final byte is verification
 	if len(data) > 0 {
 		resp.Verify = data[len(data)-1]
 	}
@@ -120,8 +122,8 @@ func ParsePopupPowerBankResponse(response []byte) (*powerbankModels.PowerBankPop
 	}, nil
 }
 func ParseCheckResponse(response []byte) (*powerbankModels.PowerBankCheckResponse, error) {
-	if len(response) < 9 {
-		return nil, fmt.Errorf("invalid data length: expected at least 9 bytes, got %d", len(response))
+	if len(response) < 5 {
+		return nil, fmt.Errorf("invalid data length: expected at least 5 bytes, got %d", len(response))
 	}
 
 	resp := &powerbankModels.PowerBankCheckResponse{
@@ -130,58 +132,60 @@ func ParseCheckResponse(response []byte) (*powerbankModels.PowerBankCheckRespons
 		Cmd:    response[3],
 	}
 
-	offset := 4
-	controlBoards := make([]powerbankModels.ControlBoard, 0)
+	pos := 4 // Start after header, length, cmd
 
-	for {
-		// Check if enough data left for control board + 4 holes + verify byte
-		if offset+6+4*15 > len(response)-1 {
-			break // not enough bytes left to parse another control board + holes
+	// Parse until we reach the verification byte (last byte)
+	for pos < len(response)-1 {
+		// Check if we have enough bytes for a control board (6 bytes)
+		if pos+6 > len(response)-1 {
+			break
 		}
 
-		// Parse control board
+		// Parse Control Board (6 bytes)
 		cb := powerbankModels.ControlBoard{
-			ControlIndex: int(response[offset]),
-			Undefined1:   int(response[offset+1]),
-			Undefined2:   int(response[offset+2]),
-			Temperature:  int(response[offset+3]),
-			SoftVersion:  int(response[offset+4]),
-			HardVersion:  int(response[offset+5]),
+			ControlIndex: int(response[pos]),
+			Undefined1:   int(response[pos+1]),
+			Undefined2:   int(response[pos+2]),
+			Temperature:  int(response[pos+3]),
+			SoftVersion:  int(response[pos+4]),
+			HardVersion:  int(response[pos+5]),
 		}
-		offset += 6
+		pos += 6
 
-		holes := make([]powerbankModels.Hole, 0, 4)
+		holes := make([]powerbankModels.Hole, 0)
 
-		// Parse exactly 4 holes per control board
-		for i := 0; i < 4; i++ {
-			hole := powerbankModels.Hole{
-				HoleIndex:     int(response[offset]),
-				State:         int(response[offset+1]),
-				PowerbankCurr: float64(response[offset+2]) / 10.0,
-				PowerbankVolt: float64(response[offset+3]) / 10.0,
-				Area:          int(response[offset+4]),
-				PowerbankSN: strconv.FormatUint(
-					uint64(response[offset+5])<<24|
-						uint64(response[offset+6])<<16|
-						uint64(response[offset+7])<<8|
-						uint64(response[offset+8]), 10),
-				SOC:         int(response[offset+9]),
-				Temperature: int(response[offset+10]),
-				ChargeVolt:  float64(response[offset+11]) / 10.0,
-				ChargeCurr:  float64(response[offset+12]) / 10.0,
-				SoftVersion: int(response[offset+13]),
-				Sensor:      response[offset+14],
+		// Parse holes for this control board (4 holes per control board, 15 bytes each)
+		for i := 0; i < 4 && pos+15 <= len(response)-1; i++ {
+			h := powerbankModels.Hole{
+				HoleIndex:     int(response[pos]),
+				State:         int(response[pos+1]),
+				PowerbankCurr: float64(response[pos+2]) / 10,
+				PowerbankVolt: float64(response[pos+3]) / 10,
+				Area:          int(response[pos+4]),
+				PowerbankSN: fmt.Sprintf("%d",
+					uint32(response[pos+5])<<24|
+						uint32(response[pos+6])<<16|
+						uint32(response[pos+7])<<8|
+						uint32(response[pos+8])),
+				SOC:         int(response[pos+9]),
+				Temperature: int(response[pos+10]),
+				ChargeVolt:  float64(response[pos+11]) / 10,
+				ChargeCurr:  float64(response[pos+12]) / 10,
+				SoftVersion: int(response[pos+13]),
+				Sensor:      response[pos+14],
 			}
-			holes = append(holes, hole)
-			offset += 15
+			holes = append(holes, h)
+			pos += 15
 		}
 
 		cb.Holes = holes
-		controlBoards = append(controlBoards, cb)
+		resp.ControlBoards = append(resp.ControlBoards, cb)
 	}
 
-	resp.ControlBoards = controlBoards
-	resp.Verify = response[len(response)-1]
+	// Final byte is verification
+	if len(response) > 0 {
+		resp.Verify = response[len(response)-1]
+	}
 
 	return resp, nil
 }
