@@ -53,6 +53,11 @@ func NewServer(input powerbankModels.ServerInput) ApiService {
 
 		deviceID := strings.Split(msg.Topic(), "/")[2]
 
+		if len(deviceID) == 0 {
+			fmt.Println("DeviceID is empty . In the topic's subscribe , the deviceID is not found")
+			return
+		}
+
 		input.CallbackSubscribe(typ, deviceID, res)
 	})
 
