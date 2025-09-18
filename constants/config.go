@@ -18,6 +18,7 @@ const (
 	PUBLISH_TYPE_UPLOAD       PUBLISH_TYPE = "upload_all"
 	PUBLISH_TYPE_RETURN       PUBLISH_TYPE = "return"
 	PUBLISH_TYPE_HEALTH_CHECK PUBLISH_TYPE = "health_check"
+	PUBLISH_TYPE_LOAD_AD      PUBLISH_TYPE = "load_ad"
 )
 
 type CabinetSignal string
