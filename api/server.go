@@ -114,7 +114,7 @@ func (s *apiService) Publish(input powerbankModels.PublishInput) error {
 
 	case constants.PUBLISH_TYPE_LOAD_AD:
 		payload = "{\"cmd\":\"load_ad\"}"
-		topic = string(constants.TOPIC_PUBLISH)
+		topic = fmt.Sprintf(string(constants.TOPIC_PUBLISH), input.ClientID)
 		break
 	default:
 		return fmt.Errorf("invalid publish type")
