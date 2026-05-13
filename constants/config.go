@@ -66,6 +66,8 @@ const (
 	PowerbankStatus_InfoAcquisitionAndMotorFailed             PowerbankStatus = "info-acquisition-and-motor-failed"
 	PowerbankStatus_BatteryLockAndMotorFailed                 PowerbankStatus = "battery-lock-and-motor-failed"
 	PowerbankStatus_AntiTheftSwitchDetectionFailed            PowerbankStatus = "anti-theft-switch-detection-failed"
+	PowerbankStatus_PopupTargetSnNotFound                     PowerbankStatus = "popup-target-sn-not-found"
+	PowerbankStatus_PopupCommandParsingFailed                 PowerbankStatus = "popup-command-parsing-failed"
 
 	PowerbankStatus_UnknownError PowerbankStatus = "unknown-error"
 

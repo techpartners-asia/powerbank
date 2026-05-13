@@ -33,5 +33,7 @@ type (
 		ClientID    string // EMQX Client ID = IMEI ID
 		PublishType constants.PUBLISH_TYPE
 		Data        string // power bank SN
+		Timestamp   string // optional Unix timestamp (seconds) — popup_sn enhanced form
+		TTL         string // optional effective time in seconds — popup_sn enhanced form
 	}
 )

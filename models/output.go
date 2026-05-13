@@ -430,6 +430,10 @@ func (popup *PowerBankPopupResponse) GetStatus() constants.PowerbankStatus {
 		return constants.PowerbankStatus_BatteryLockAndMotorFailed
 	case 0x24:
 		return constants.PowerbankStatus_AntiTheftSwitchDetectionFailed
+	case 0xFC:
+		return constants.PowerbankStatus_PopupTargetSnNotFound
+	case 0xFF:
+		return constants.PowerbankStatus_PopupCommandParsingFailed
 	default:
 		return constants.PowerbankStatus_UnknownError
 	}
@@ -471,6 +475,10 @@ func (popup *PowerBankPopupResponse) GetDescription() string {
 		return "Battery‑lock command failed and motor action failed"
 	case 0x24:
 		return "Anti‑theft‑switch detection failed"
+	case 0xFC:
+		return "Target SN not found"
+	case 0xFF:
+		return "Command parsing failed"
 	default:
 		return "Unknown error"
 	}
