@@ -178,63 +178,58 @@ func ParseHealthCheckResponse(msg mqtt.Message) (*powerbankModels.PowerBankHealt
 	}, nil
 }
 
+// Debug enables verbose stdout traces in ParseResponse. Off by default.
+// Set from the host application (e.g., when constructing the server) if you
+// want raw payload hex and per-cmd parse error messages.
+var Debug bool
+
+func debugf(format string, args ...interface{}) {
+	if Debug {
+		fmt.Printf(format, args...)
+	}
+}
+
 func ParseResponse(msg mqtt.Message) (constants.PUBLISH_TYPE, interface{}, error) {
 	payload := msg.Payload()
 	if len(payload) < 4 {
-		fmt.Printf("Invalid response length: %d\n", len(payload))
 		return "", nil, fmt.Errorf("invalid response length: expected at least 4 bytes, got %d", len(payload))
 	}
 
-	fmt.Printf("Payload: % X\n", payload)
+	debugf("Payload: % X\n", payload)
 
-	// Check command type from byte[3]
 	cmd := payload[3]
 	switch cmd {
-	case 0x10: // Check command response
+	case 0x10:
 		response, err := ParseCheckResponse(payload)
 		if err != nil {
-			fmt.Printf("Error parsing check response: %v\n", err)
-			return "", nil, err
+			return "", nil, fmt.Errorf("parse check (0x10): %w", err)
 		}
 		return constants.PUBLISH_TYPE_CHECK, response, nil
-	case 0x31: // Popup command response
+	case 0x31:
 		response, err := ParsePopupPowerBankResponse(payload)
 		if err != nil {
-			fmt.Printf("Error parsing popup response: %v\n", err)
-			return "", nil, err
+			return "", nil, fmt.Errorf("parse popup (0x31): %w", err)
 		}
 		return constants.PUBLISH_TYPE_POPUP, response, nil
-	case 0x21: // Pop-up By Hole response
+	case 0x21:
 		response, err := ParsePopupByHolePowerBankResponse(payload)
 		if err != nil {
-			fmt.Printf("Error parsing popup-by-hole response: %v\n", err)
-			return "", nil, err
+			return "", nil, fmt.Errorf("parse popup-by-hole (0x21): %w", err)
 		}
 		return constants.PUBLISH_TYPE_POPUP_BY_HOLE, response, nil
-	case 0x40: // Return command response
+	case 0x40:
 		response, err := ParseReturnPowerBankResponse(payload)
 		if err != nil {
-			fmt.Printf("Error parsing return response: %v\n", err)
-			return "", nil, err
+			return "", nil, fmt.Errorf("parse return (0x40): %w", err)
 		}
 		return constants.PUBLISH_TYPE_RETURN, response, nil
-	case 0x28: // Return-Fix (self-test) command response
+	case 0x28:
 		response, err := ParseReturnFixPowerBankResponse(payload)
 		if err != nil {
-			fmt.Printf("Error parsing return-fix response: %v\n", err)
-			return "", nil, err
+			return "", nil, fmt.Errorf("parse return-fix (0x28): %w", err)
 		}
 		return constants.PUBLISH_TYPE_RETURN_FIX, response, nil
-	// case 0x7A: // Health check command response
-	// 	response, err := ParseHealthCheckResponse(payload)
-	// 	if err != nil {
-	// 		fmt.Printf("Error parsing health check response: %v\n", err)
-	// 		return "", nil, err
-	// 	}
-	// 	return constants.PUBLISH_TYPE_HEALTH_CHECK, response, nil
 	default:
-		fmt.Printf("Unknown command type: 0x%02X\n", cmd)
 		return "", nil, fmt.Errorf("unknown command type: 0x%02X", cmd)
 	}
-
 }

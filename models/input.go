@@ -1,7 +1,6 @@
 package powerbankModels
 
 import (
-	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"github.com/techpartners-asia/powerbank/constants"
 )
 
@@ -13,7 +12,6 @@ type (
 		Password          string
 		Debug             bool // when true, emits MQTT debug/error logs and verbose traces
 		CallbackSubscribe func(typ constants.PUBLISH_TYPE, clientID string, msg interface{})
-		CallbackPublish   func(msg mqtt.Message)
 	}
 
 	UserInput struct {

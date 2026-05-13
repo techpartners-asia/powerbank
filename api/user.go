@@ -8,8 +8,8 @@ import (
 )
 
 type UserService interface {
-	AddUser(deviceId string, password string, database string) *powerbankModels.CreateUserResponse
-	GetUser(deviceId string) *powerbankModels.GetUserResponse
+	AddUser(deviceId string, password string, database string) (*powerbankModels.CreateUserResponse, error)
+	GetUser(deviceId string) (*powerbankModels.GetUserResponse, error)
 }
 
 type userService struct {
@@ -18,7 +18,6 @@ type userService struct {
 }
 
 func NewUserService(input powerbankModels.UserInput) UserService {
-
 	client := axios4go.NewClient(fmt.Sprintf("http://%s:%s", input.Host, input.Port))
 
 	return &userService{
@@ -32,8 +31,7 @@ func NewUserService(input powerbankModels.UserInput) UserService {
 	}
 }
 
-func (s *userService) AddUser(deviceId string, password string, database string) *powerbankModels.CreateUserResponse {
-
+func (s *userService) AddUser(deviceId string, password string, database string) (*powerbankModels.CreateUserResponse, error) {
 	s.options.URL = fmt.Sprintf("/api/v5/authentication/%s/users", database)
 	s.options.Method = "POST"
 	s.options.Body = map[string]interface{}{
@@ -43,37 +41,30 @@ func (s *userService) AddUser(deviceId string, password string, database string)
 
 	response, err := s.client.Request(s.options)
 	if err != nil {
-		fmt.Println(err)
-		return nil
+		return nil, fmt.Errorf("emqx add user: %w", err)
 	}
 
 	var data powerbankModels.CreateUserResponse
 	if err := response.JSON(&data); err != nil {
-		return nil
+		return nil, fmt.Errorf("emqx add user decode: %w", err)
 	}
 
-	fmt.Println(data)
-
-	return &data
+	return &data, nil
 }
 
-func (s *userService) GetUser(deviceId string) *powerbankModels.GetUserResponse {
-
+func (s *userService) GetUser(deviceId string) (*powerbankModels.GetUserResponse, error) {
 	s.options.URL = fmt.Sprintf("/api/v5/clients/%s", deviceId)
 	s.options.Method = "GET"
 
 	response, err := s.client.Request(s.options)
 	if err != nil {
-		fmt.Println(err)
-		return nil
+		return nil, fmt.Errorf("emqx get user: %w", err)
 	}
 
 	var data powerbankModels.GetUserResponse
 	if err := response.JSON(&data); err != nil {
-		return nil
+		return nil, fmt.Errorf("emqx get user decode: %w", err)
 	}
 
-	fmt.Println(data)
-
-	return &data
+	return &data, nil
 }

@@ -23,6 +23,7 @@ type apiService struct {
 }
 
 func NewServer(input powerbankModels.ServerInput) (ApiService, error) {
+	powerbankUtils.Debug = input.Debug
 	if input.Debug {
 		mqtt.DEBUG = log.New(os.Stdout, "[mqtt] ", log.LstdFlags)
 		mqtt.ERROR = log.New(os.Stderr, "[mqtt-err] ", log.LstdFlags)
@@ -120,9 +121,6 @@ func (s *apiService) Publish(input powerbankModels.PublishInput) error {
 	case constants.PUBLISH_TYPE_UPLOAD:
 		payload = fmt.Sprintf("{\"cmd\":\"%v\"}", constants.PUBLISH_TYPE_UPLOAD)
 		topic = fmt.Sprintf(string(constants.TOPIC_PUBLISH), input.ClientID)
-	case constants.PUBLISH_TYPE_HEALTH_CHECK:
-		payload = ""
-		topic = fmt.Sprintf(string(constants.TOPIC_HEALTH_CHECK), input.ClientID)
 	case constants.PUBLISH_TYPE_LOAD_AD:
 		payload = "{\"cmd\":\"load_ad\"}"
 		topic = fmt.Sprintf(string(constants.TOPIC_PUBLISH), input.ClientID)
