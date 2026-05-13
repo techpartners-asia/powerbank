@@ -13,92 +13,89 @@ import (
 	powerbankUtils "github.com/techpartners-asia/powerbank/utils"
 )
 
-var f mqtt.MessageHandler = func(client mqtt.Client, msg mqtt.Message) {
-	fmt.Printf("TOPIC: %s\n", msg.Topic())
-	fmt.Printf("MSG: %s\n", msg.Payload())
-}
-
 type ApiService interface {
 	Publish(input powerbankModels.PublishInput) error
 }
 
 type apiService struct {
 	client mqtt.Client
+	debug  bool
 }
 
-func NewServer(input powerbankModels.ServerInput) ApiService {
-	mqtt.DEBUG = log.New(os.Stdout, "", 0)
-	mqtt.ERROR = log.New(os.Stdout, "", 0)
+func NewServer(input powerbankModels.ServerInput) (ApiService, error) {
+	if input.Debug {
+		mqtt.DEBUG = log.New(os.Stdout, "[mqtt] ", log.LstdFlags)
+		mqtt.ERROR = log.New(os.Stderr, "[mqtt-err] ", log.LstdFlags)
+	}
+
 	opts := mqtt.NewClientOptions().AddBroker(fmt.Sprintf("tcp://%s:%s", input.Host, input.Port))
 	opts.SetUsername(input.Username)
 	opts.SetPassword(input.Password)
 	opts.SetKeepAlive(60 * time.Second)
 
-	// Message callback handler
-	opts.SetDefaultPublishHandler(f)
+	if input.Debug {
+		opts.SetDefaultPublishHandler(func(client mqtt.Client, msg mqtt.Message) {
+			fmt.Printf("TOPIC: %s\n", msg.Topic())
+			fmt.Printf("MSG: %s\n", msg.Payload())
+		})
+	}
 
 	c := mqtt.NewClient(opts)
 	if token := c.Connect(); token.Wait() && token.Error() != nil {
-		log.Fatal(token.Error())
+		return nil, fmt.Errorf("mqtt connect: %w", token.Error())
 	}
 
-	// * NOTE * - Subscribe
 	c.Subscribe(string(constants.TOPIC_SUBSCRIBE), 0, func(client mqtt.Client, msg mqtt.Message) {
-
 		typ, res, err := powerbankUtils.ParseResponse(msg)
 		if err != nil {
-			fmt.Println(err)
+			if input.Debug {
+				fmt.Println(err)
+			}
 			return
 		}
 
-		deviceID := strings.Split(msg.Topic(), "/")[2]
-
-		if len(deviceID) == 0 {
-			fmt.Println("DeviceID is empty . In the topic's subscribe , the deviceID is not found")
+		parts := strings.Split(msg.Topic(), "/")
+		if len(parts) < 3 || parts[2] == "" {
+			if input.Debug {
+				fmt.Println("DeviceID missing from subscribe topic")
+			}
 			return
 		}
 
-		input.CallbackSubscribe(typ, deviceID, res)
+		input.CallbackSubscribe(typ, parts[2], res)
 	})
 
-	c.Subscribe(string("/powerbank/+/user/heart"), 0, func(client mqtt.Client, msg mqtt.Message) {
-		deviceID := strings.Split(msg.Topic(), "/")[2]
-
-		fmt.Println(deviceID)
-
-		fmt.Printf("MSG: % X\n", msg.Payload())
+	c.Subscribe("/powerbank/+/user/heart", 0, func(client mqtt.Client, msg mqtt.Message) {
+		parts := strings.Split(msg.Topic(), "/")
+		if len(parts) < 3 || parts[2] == "" {
+			return
+		}
+		deviceID := parts[2]
 
 		res, err := powerbankUtils.ParseHealthCheckResponse(msg)
 		if err != nil {
-			fmt.Println(err)
+			if input.Debug {
+				fmt.Println(err)
+			}
 			return
 		}
 
-		fmt.Println(res.GetSignalStrength())
-		fmt.Println(res.GetBackupPowerStatus())
-
-		fmt.Println(res, deviceID)
-		// input.CallbackHealthCheck(deviceID)
+		if input.Debug {
+			fmt.Printf("[heart] device=%s signal=%v backup=%v\n", deviceID, res.GetSignalStrength(), res.GetBackupPowerStatus())
+		}
 	})
 
-	service := &apiService{
-		client: c,
-	}
-
-	return service
+	return &apiService{client: c, debug: input.Debug}, nil
 }
 
-// * NOTE - Publish
 func (s *apiService) Publish(input powerbankModels.PublishInput) error {
-
 	var payload string
 	var topic string
 
 	switch input.PublishType {
 	case constants.PUBLISH_TYPE_CHECK:
-		payload = (fmt.Sprintf("{\"cmd\":\"%v\"}", constants.PUBLISH_TYPE_CHECK))
+		payload = fmt.Sprintf("{\"cmd\":\"%v\"}", constants.PUBLISH_TYPE_CHECK)
 		topic = fmt.Sprintf(string(constants.TOPIC_PUBLISH), input.ClientID)
-		break
 	case constants.PUBLISH_TYPE_POPUP_BY_HOLE:
 		io := input.IO
 		if io == "" {
@@ -120,34 +117,28 @@ func (s *apiService) Publish(input powerbankModels.PublishInput) error {
 			payload = fmt.Sprintf("{\"cmd\":\"%v\",\"data\":\"%v\"}", constants.PUBLISH_TYPE_POPUP, input.Data)
 		}
 		topic = fmt.Sprintf(string(constants.TOPIC_PUBLISH), input.ClientID)
-		break
 	case constants.PUBLISH_TYPE_UPLOAD:
-		payload = (fmt.Sprintf("{\"cmd\":\"%v\"}", constants.PUBLISH_TYPE_UPLOAD))
+		payload = fmt.Sprintf("{\"cmd\":\"%v\"}", constants.PUBLISH_TYPE_UPLOAD)
 		topic = fmt.Sprintf(string(constants.TOPIC_PUBLISH), input.ClientID)
-		break
 	case constants.PUBLISH_TYPE_HEALTH_CHECK:
 		payload = ""
 		topic = fmt.Sprintf(string(constants.TOPIC_HEALTH_CHECK), input.ClientID)
-		break
-
 	case constants.PUBLISH_TYPE_LOAD_AD:
 		payload = "{\"cmd\":\"load_ad\"}"
 		topic = fmt.Sprintf(string(constants.TOPIC_PUBLISH), input.ClientID)
-		break
 	default:
-		return fmt.Errorf("invalid publish type")
+		return fmt.Errorf("invalid publish type: %v", input.PublishType)
 	}
 
-	response := s.client.Publish(topic, 0, false, payload)
-	if response.Wait() && response.Error() != nil {
-		log.Fatal(response.Error())
-		return response.Error()
+	token := s.client.Publish(topic, 0, false, payload)
+	token.Wait()
+	if err := token.Error(); err != nil {
+		return fmt.Errorf("mqtt publish: %w", err)
 	}
 
-	response.Wait()
-
-	// fmt.Println(reponse.)
-	fmt.Println("Publish added successfully")
+	if s.debug {
+		fmt.Printf("[publish] topic=%s payload=%s\n", topic, payload)
+	}
 
 	return nil
 }

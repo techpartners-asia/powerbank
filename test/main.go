@@ -70,12 +70,15 @@ func main() {
 	// testParsePowerBankUploadResponse()
 
 	// Original main function code
-	service := powerbankSdk.NewServer(powerbankModels.ServerInput{
+	service, err := powerbankSdk.NewServer(powerbankModels.ServerInput{
 		Host:     "103.153.141.32",
 		Port:     "1883",
 		Username: "backend",
 		Password: "zXRO9qW(k62H",
 	})
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	// fmt.Println(service)
 

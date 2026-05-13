@@ -11,11 +11,9 @@ type (
 		Port              string
 		Username          string
 		Password          string
+		Debug             bool // when true, emits MQTT debug/error logs and verbose traces
 		CallbackSubscribe func(typ constants.PUBLISH_TYPE, clientID string, msg interface{})
 		CallbackPublish   func(msg mqtt.Message)
-
-		// DB instance
-
 	}
 
 	UserInput struct {
