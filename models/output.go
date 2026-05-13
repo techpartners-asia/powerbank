@@ -175,13 +175,6 @@ type (
 		Sensor        byte    // Byte[14] - Position detection
 	}
 
-	PowerBankUploadResponse struct {
-		Head          byte           // Byte[0] - Head code (Default: 0xA8)
-		Length        int            // Byte[1-2] - Packet length
-		Cmd           byte           // Byte[3] - Command name (Default: 0x10)
-		ControlBoards []ControlBoard // Byte[4~n] - Control board information
-		Verify        byte           // Byte[n+1] - Check code
-	}
 	PowerBankHealthCheckResponse struct {
 		Head         byte   // Byte[0] - Head code (Default: 0xA8)
 		Length       int    // Byte[1-2] - Packet length
@@ -191,6 +184,10 @@ type (
 		Verify       byte   // Byte[n+1] - Check code
 	}
 )
+
+// PowerBankUploadResponse is an alias for PowerBankCheckResponse — both check
+// and upload_all return the same 0x10 cabinet-info layout.
+type PowerBankUploadResponse = PowerBankCheckResponse
 
 func (healthCheck *PowerBankHealthCheckResponse) GetSignalStrength() constants.CabinetSignal {
 	// Parse the signal string which is in format "CSQ:26;BP:0"

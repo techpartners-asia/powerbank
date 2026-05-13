@@ -9,81 +9,10 @@ import (
 	powerbankModels "github.com/techpartners-asia/powerbank/models"
 )
 
+// ParsePowerBankUploadResponse parses the upload_all (0x10) cabinet info frame.
+// The layout is identical to the check response, so it delegates to ParseCheckResponse.
 func ParsePowerBankUploadResponse(data []byte) (*powerbankModels.PowerBankUploadResponse, error) {
-	if len(data) < 5 {
-		return nil, fmt.Errorf("invalid data length: expected at least 5 bytes, got %d", len(data))
-	}
-
-	resp := &powerbankModels.PowerBankUploadResponse{
-		Head:   data[0],
-		Length: int(data[1])<<8 | int(data[2]),
-		Cmd:    data[3],
-	}
-
-	// Verify header and command
-	if resp.Head != 0xA8 {
-		return nil, fmt.Errorf("invalid header: expected 0xA8, got 0x%02X", resp.Head)
-	}
-	if resp.Cmd != 0x10 {
-		return nil, fmt.Errorf("invalid command: expected 0x10, got 0x%02X", resp.Cmd)
-	}
-
-	pos := 4 // Start after header, length, cmd
-
-	// Parse until we reach the verification byte (last byte)
-	for pos < len(data)-1 {
-		// Check if we have enough bytes for a control board (6 bytes)
-		if pos+6 > len(data)-1 {
-			break
-		}
-
-		// Parse Control Board (6 bytes)
-		cb := powerbankModels.ControlBoard{
-			ControlIndex: int(data[pos]),
-			Undefined1:   int(data[pos+1]),
-			Undefined2:   int(data[pos+2]),
-			Temperature:  int(data[pos+3]),
-			SoftVersion:  int(data[pos+4]),
-			HardVersion:  int(data[pos+5]),
-		}
-		pos += 6
-
-		holes := make([]powerbankModels.Hole, 0)
-
-		// Parse holes for this control board (4 holes per control board, 15 bytes each)
-		for i := 0; i < 4 && pos+15 <= len(data)-1; i++ {
-			h := powerbankModels.Hole{
-				HoleIndex:     int(data[pos]),
-				State:         int(data[pos+1]),
-				PowerbankCurr: float64(data[pos+2]) / 10,
-				PowerbankVolt: float64(data[pos+3]) / 10,
-				Area:          int(data[pos+4]),
-				PowerbankSN: fmt.Sprintf("%d",
-					uint32(data[pos+5])<<24|
-						uint32(data[pos+6])<<16|
-						uint32(data[pos+7])<<8|
-						uint32(data[pos+8])),
-				SOC:         int(data[pos+9]),
-				Temperature: int(data[pos+10]),
-				ChargeVolt:  float64(data[pos+11]) / 10,
-				ChargeCurr:  float64(data[pos+12]) / 10,
-				SoftVersion: int(data[pos+13]),
-				Sensor:      data[pos+14],
-			}
-			holes = append(holes, h)
-			pos += 15
-		}
-
-		cb.Holes = holes
-		resp.ControlBoards = append(resp.ControlBoards, cb)
-	}
-
-	// Final byte is verification
-	if len(data) > 0 {
-		resp.Verify = data[len(data)-1]
-	}
-
-	return resp, nil
+	return ParseCheckResponse(data)
 }
 
 func ParseReturnPowerBankResponse(response []byte) (*powerbankModels.PowerBankReturnResponse, error) {

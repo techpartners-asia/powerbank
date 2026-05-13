@@ -3,212 +3,161 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/techpartners-asia/powerbank)](https://goreportcard.com/report/github.com/techpartners-asia/powerbank)
 [![GoDoc](https://godoc.org/github.com/techpartners-asia/powerbank?status.svg)](https://godoc.org/github.com/techpartners-asia/powerbank)
 
-A Go SDK for interacting with PowerBank devices through MQTT protocol. This SDK provides a simple and efficient interface to communicate with PowerBank devices, enabling you to send commands and receive real-time updates.
-
-## Table of Contents
-
-- [Features](#features)
-- [Prerequisites](#prerequisites)
-- [Installation](#installation)
-- [Quick Start](#quick-start)
-- [API Reference](#api-reference)
-- [Configuration](#configuration)
-- [Examples](#examples)
-- [Troubleshooting](#troubleshooting)
-- [Contributing](#contributing)
-- [License](#license)
+A Go SDK for talking to PowerBank rental cabinets over MQTT. Wraps the volinks Powerbank Protocol V1 — publishes JSON commands, decodes hex bytecode responses into typed structs.
 
 ## Features
 
-- 🔌 MQTT-based communication with PowerBank devices
-- 📱 Support for device commands (popup, check)
-- 🔄 Real-time device updates through MQTT subscriptions
-- 🛠 Simple and intuitive API
-- 🔒 Secure communication with MQTT broker
-- 📊 Comprehensive error handling and logging
+- MQTT publish/subscribe with the cabinet
+- Typed parsers for every supported response frame (check, pop-up by SN, pop-up by hole, return, return-fix, heart)
+- Status code → human-readable mapping for each response
+- Opt-in MQTT debug logs
 
-## Prerequisites
+## Supported Commands
 
-- Go 1.16 or higher
-- MQTT broker access credentials
-- Basic understanding of MQTT protocol
+| Publish type                  | JSON cmd     | Response cmd | Notes                                              |
+| ----------------------------- | ------------ | ------------ | -------------------------------------------------- |
+| `PUBLISH_TYPE_CHECK`          | `check`      | `0x10`       | Cabinet snapshot                                   |
+| `PUBLISH_TYPE_UPLOAD`         | `upload_all` | `0x10`       | Same layout as check                               |
+| `PUBLISH_TYPE_POPUP`          | `popup_sn`   | `0x31`       | Pop-up by power bank SN                            |
+| `PUBLISH_TYPE_POPUP_BY_HOLE`  | `popup`      | `0x21`       | Pop-up by hole number; supports `io`               |
+| `PUBLISH_TYPE_LOAD_AD`        | `load_ad`    | —            | Triggers HTTP ad fetch on cabinet; no MQTT reply   |
+| `PUBLISH_TYPE_HEALTH_CHECK`   | (empty)      | `0x7A`       | Cabinet pushes heart frame; SDK decodes subscribe  |
+
+Decoded but device-initiated:
+
+| Response cmd | Type tag                 | Struct                          |
+| ------------ | ------------------------ | ------------------------------- |
+| `0x40`       | `PUBLISH_TYPE_RETURN`    | `PowerBankReturnResponse`       |
+| `0x28`       | `PUBLISH_TYPE_RETURN_FIX`| `PowerBankReturnFixResponse`    |
 
 ## Installation
 
 ```bash
-# Install the SDK
 go get github.com/techpartners-asia/powerbank
-
-# Update to the latest version
-go get -u github.com/techpartners-asia/powerbank
 ```
 
 ## Quick Start
-
-Here's a minimal example to get you started:
-
-```go
-package main
-
-import (
-    "fmt"
-    mqtt "github.com/eclipse/paho.mqtt.golang"
-    powerbankSdk "github.com/techpartners-asia/powerbank"
-    "github.com/techpartners-asia/powerbank/constants"
-    powerbankModels "github.com/techpartners-asia/powerbank/models"
-)
-
-func main() {
-    // Initialize the server with MQTT broker details
-    service := powerbankSdk.NewServer(powerbankModels.ServerInput{
-        Host:     "your-mqtt-broker-host",
-        Port:     "1883",
-        Username: "your-username",
-        Password: "your-password",
-        CallbackSubscribe: func(msg mqtt.Message) {
-            fmt.Printf("Received message: %s\n", string(msg.Payload()))
-        },
-        CallbackPublish: func(msg mqtt.Message) {
-            fmt.Printf("Published message: %s\n", string(msg.Payload()))
-        },
-    })
-
-    // Send a popup command to a device
-    err := service.Publish("device-id", constants.PUBLISH_TYPE_POPUP, "data")
-    if err != nil {
-        fmt.Printf("Error publishing message: %v\n", err)
-    }
-
-    // Keep the program running
-    select {}
-}
-```
-
-## API Reference
-
-### Publish Types
-
-| Type                 | Description                        |
-| -------------------- | ---------------------------------- |
-| `PUBLISH_TYPE_POPUP` | Send a popup command to the device |
-| `PUBLISH_TYPE_CHECK` | Check device status                |
-
-### Topics
-
-| Topic                            | Description                        |
-| -------------------------------- | ---------------------------------- |
-| `/powerbank/+/user/update`       | Subscribe topic for device updates |
-| `/powerbank/{deviceId}/user/get` | Publish topic for sending commands |
-
-## Configuration
-
-The SDK requires the following configuration parameters:
-
-| Parameter           | Type     | Description                   | Required |
-| ------------------- | -------- | ----------------------------- | -------- |
-| `Host`              | string   | MQTT broker host address      | Yes      |
-| `Port`              | string   | MQTT broker port              | Yes      |
-| `Username`          | string   | MQTT broker username          | Yes      |
-| `Password`          | string   | MQTT broker password          | Yes      |
-| `CallbackSubscribe` | function | Handler for incoming messages | No       |
-| `CallbackPublish`   | function | Handler for outgoing messages | No       |
-
-## Examples
-
-### Basic Usage
-
-```go
-package main
-
-import (
-    "fmt"
-    mqtt "github.com/eclipse/paho.mqtt.golang"
-    powerbankSdk "github.com/techpartners-asia/powerbank"
-    powerbankModels "github.com/techpartners-asia/powerbank/models"
-)
-
-func main() {
-    service := powerbankSdk.NewServer(powerbankModels.ServerInput{
-        Host:     "mqtt.example.com",
-        Port:     "1883",
-        Username: "user",
-        Password: "pass",
-        CallbackSubscribe: func(msg mqtt.Message) {
-            fmt.Printf("Received: %s\n", string(msg.Payload()))
-        },
-    })
-}
-```
-
-### Sending Commands
 
 ```go
 package main
 
 import (
     "log"
+
     powerbankSdk "github.com/techpartners-asia/powerbank"
     "github.com/techpartners-asia/powerbank/constants"
     powerbankModels "github.com/techpartners-asia/powerbank/models"
 )
 
 func main() {
-    service := powerbankSdk.NewServer(powerbankModels.ServerInput{
+    service, err := powerbankSdk.NewServer(powerbankModels.ServerInput{
         Host:     "mqtt.example.com",
         Port:     "1883",
         Username: "user",
         Password: "pass",
+        Debug:    false,
+        CallbackSubscribe: func(typ constants.PUBLISH_TYPE, deviceID string, msg interface{}) {
+            log.Printf("device=%s type=%s msg=%+v", deviceID, typ, msg)
+        },
     })
-
-    // Send popup command
-    err := service.Publish("device-123", constants.PUBLISH_TYPE_POPUP, "85021618")
     if err != nil {
-        log.Printf("Error: %v\n", err)
+        log.Fatal(err)
     }
 
-    // Check device status
-    err = service.Publish("device-123", constants.PUBLISH_TYPE_CHECK, "")
-    if err != nil {
-        log.Printf("Error: %v\n", err)
+    // Pop up by SN
+    if err := service.Publish(powerbankModels.PublishInput{
+        ClientID:    "864601068412899",
+        PublishType: constants.PUBLISH_TYPE_POPUP,
+        Data:        "85021618",
+    }); err != nil {
+        log.Printf("publish: %v", err)
+    }
+
+    select {}
+}
+```
+
+## Pop-up With TTL
+
+The protocol supports an enhanced form with `timestamp` + `ttl` so the cabinet rejects stale commands after network delay. Both fields must be set for the SDK to emit them:
+
+```go
+service.Publish(powerbankModels.PublishInput{
+    ClientID:    "864601068412899",
+    PublishType: constants.PUBLISH_TYPE_POPUP,   // or PUBLISH_TYPE_POPUP_BY_HOLE
+    Data:        "85021618",
+    Timestamp:   "1759941810",
+    TTL:         "30",
+})
+```
+
+## Pop-up By Hole
+
+```go
+service.Publish(powerbankModels.PublishInput{
+    ClientID:    "864601068412899",
+    PublishType: constants.PUBLISH_TYPE_POPUP_BY_HOLE,
+    Data:        "1",     // hole number (1-80)
+    IO:          "0",     // serial port; defaults to "0"
+})
+```
+
+## Handling Responses
+
+Cast the `msg` in `CallbackSubscribe` based on the `typ` tag:
+
+```go
+CallbackSubscribe: func(typ constants.PUBLISH_TYPE, deviceID string, msg interface{}) {
+    switch typ {
+    case constants.PUBLISH_TYPE_CHECK:
+        r := msg.(*powerbankModels.PowerBankCheckResponse)
+        for _, board := range r.ControlBoards {
+            for _, hole := range board.Holes {
+                log.Printf("hole %d state=%s soc=%d%%", hole.HoleIndex, hole.GetStateDescription(), hole.SOC)
+            }
+        }
+    case constants.PUBLISH_TYPE_POPUP:
+        r := msg.(*powerbankModels.PowerBankPopupResponse)
+        log.Printf("popup %s -> %s", r.PowerbankSN, r.GetDescription())
+    case constants.PUBLISH_TYPE_POPUP_BY_HOLE:
+        r := msg.(*powerbankModels.PowerBankPopupByHoleResponse)
+        log.Printf("popup hole=%d -> %s", r.HoleIndex, r.GetDescription())
+    case constants.PUBLISH_TYPE_RETURN:
+        r := msg.(*powerbankModels.PowerBankReturnResponse)
+        log.Printf("return %s -> %s", r.PowerbankSN, r.GetDescription())
+    case constants.PUBLISH_TYPE_RETURN_FIX:
+        r := msg.(*powerbankModels.PowerBankReturnFixResponse)
+        log.Printf("return-fix %s state=%s temp=%d°C", r.PowerbankSN, r.GetDescription(), r.Temperature)
     }
 }
 ```
 
+## Topics
+
+| Topic                              | Direction          | Purpose                          |
+| ---------------------------------- | ------------------ | -------------------------------- |
+| `/powerbank/+/user/update`         | cabinet → SDK      | Command responses (0x10/0x21/...) |
+| `/powerbank/+/user/heart`          | cabinet → SDK      | Heartbeat with CSQ/BP signal      |
+| `/powerbank/{deviceID}/user/get`   | SDK → cabinet      | JSON commands                     |
+
+## Configuration
+
+| Field               | Type     | Required | Notes                                                                 |
+| ------------------- | -------- | -------- | --------------------------------------------------------------------- |
+| `Host`              | string   | Yes      | MQTT broker host                                                      |
+| `Port`              | string   | Yes      | MQTT broker port                                                      |
+| `Username`          | string   | Yes      | MQTT broker username                                                  |
+| `Password`          | string   | Yes      | MQTT broker password                                                  |
+| `Debug`             | bool     | No       | When true, emits MQTT debug/error logs and verbose traces             |
+| `CallbackSubscribe` | function | Yes      | `func(typ PUBLISH_TYPE, deviceID string, msg interface{})`            |
+| `CallbackPublish`   | function | No       | Currently unused; reserved                                            |
+
 ## Troubleshooting
 
-### Common Issues
-
-1. **Connection Failed**
-
-   - Verify MQTT broker credentials
-   - Check network connectivity
-   - Ensure broker is running and accessible
-
-2. **No Messages Received**
-
-   - Verify subscription topic
-   - Check device is online
-   - Ensure correct permissions
-
-3. **Publish Errors**
-   - Verify device ID
-   - Check message format
-   - Ensure proper permissions
-
-## Contributing
-
-We welcome contributions! Please follow these steps:
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+- **`NewServer` returns error** — broker is unreachable or credentials are wrong. Check host/port/credentials and network.
+- **No messages in callback** — verify `CallbackSubscribe` is set and the cabinet's deviceID is correct. Enable `Debug: true` to see frames.
+- **Unknown command type in logs** — cabinet emitted a response cmd byte the SDK doesn't yet decode. Open an issue with the hex dump.
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## Support
-
-For support, please open an issue in the GitHub repository or contact the development team.
+MIT — see [LICENSE](LICENSE).
