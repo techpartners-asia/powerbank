@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strconv"
 
-	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"github.com/techpartners-asia/powerbank/constants"
 	powerbankModels "github.com/techpartners-asia/powerbank/models"
 )
@@ -162,8 +161,7 @@ func ParseCheckResponse(response []byte) (*powerbankModels.PowerBankCheckRespons
 	return resp, nil
 }
 
-func ParseHealthCheckResponse(msg mqtt.Message) (*powerbankModels.PowerBankHealthCheckResponse, error) {
-	response := msg.Payload()
+func ParseHealthCheckResponse(response []byte) (*powerbankModels.PowerBankHealthCheckResponse, error) {
 	if len(response) < 9 {
 		return nil, fmt.Errorf("invalid data length: expected at least 9 bytes, got %d", len(response))
 	}
@@ -173,7 +171,7 @@ func ParseHealthCheckResponse(msg mqtt.Message) (*powerbankModels.PowerBankHealt
 		Length:       int(response[1])<<8 | int(response[2]),
 		Cmd:          response[3],
 		ControlIndex: int(response[4]),
-		Signal:       string(response[5:]),
+		Signal:       string(response[5 : len(response)-1]),
 		Verify:       response[len(response)-1],
 	}, nil
 }
@@ -189,8 +187,7 @@ func debugf(format string, args ...interface{}) {
 	}
 }
 
-func ParseResponse(msg mqtt.Message) (constants.PUBLISH_TYPE, interface{}, error) {
-	payload := msg.Payload()
+func ParseResponse(payload []byte) (constants.PUBLISH_TYPE, interface{}, error) {
 	if len(payload) < 4 {
 		return "", nil, fmt.Errorf("invalid response length: expected at least 4 bytes, got %d", len(payload))
 	}

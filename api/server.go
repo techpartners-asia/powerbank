@@ -47,7 +47,7 @@ func NewServer(input powerbankModels.ServerInput) (ApiService, error) {
 	}
 
 	c.Subscribe(string(constants.TOPIC_SUBSCRIBE), 0, func(client mqtt.Client, msg mqtt.Message) {
-		typ, res, err := powerbankUtils.ParseResponse(msg)
+		typ, res, err := powerbankUtils.ParseResponse(msg.Payload())
 		if err != nil {
 			if input.Debug {
 				fmt.Println(err)
@@ -73,7 +73,7 @@ func NewServer(input powerbankModels.ServerInput) (ApiService, error) {
 		}
 		deviceID := parts[2]
 
-		res, err := powerbankUtils.ParseHealthCheckResponse(msg)
+		res, err := powerbankUtils.ParseHealthCheckResponse(msg.Payload())
 		if err != nil {
 			if input.Debug {
 				fmt.Println(err)
