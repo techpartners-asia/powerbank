@@ -17,6 +17,7 @@ const (
 	PUBLISH_TYPE_CHECK        PUBLISH_TYPE = "check"
 	PUBLISH_TYPE_UPLOAD       PUBLISH_TYPE = "upload_all"
 	PUBLISH_TYPE_RETURN       PUBLISH_TYPE = "return"
+	PUBLISH_TYPE_RETURN_FIX   PUBLISH_TYPE = "return_fix"
 	PUBLISH_TYPE_HEALTH_CHECK PUBLISH_TYPE = "health_check"
 	PUBLISH_TYPE_LOAD_AD      PUBLISH_TYPE = "load_ad"
 )
@@ -82,4 +83,5 @@ const (
 	PowerbankStatus_FailedToObtainVoltageTemperatureOrOtherInformationAndMotorActionFailed PowerbankStatus = "failed-to-obtain-voltage-temperature-or-other-information-and-motor-action-failed"
 	PowerbankStatus_BatteryLockCommandFailedAndMotorActionFailed                           PowerbankStatus = "battery-lock-command-failed-and-motor-action-failed"
 	PowerbankStatus_AntiTheftSwitchDetectionFailedAndMotorActionFailed                     PowerbankStatus = "anti-theft-switch-detection-failed-and-motor-action-failed"
+	PowerbankStatus_ReturnRegionCodeError                                                  PowerbankStatus = "return-region-code-error"
 )

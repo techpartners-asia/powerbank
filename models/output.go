@@ -105,6 +105,29 @@ type (
 		Verify       byte    // Byte[20] - Verification code
 	}
 
+	// PowerBankReturnFixResponse represents the byte protocol response for
+	// the 0x28 Return-Fix (self-test) command, reported over MQTT regardless
+	// of success or failure. 21 bytes total.
+	PowerBankReturnFixResponse struct {
+		Head         byte    // Byte[0] - 0xA8
+		Length       int     // Byte[1-2] - 0x0015 = 21
+		Cmd          byte    // Byte[3] - 0x28
+		ControlIndex int     // Byte[4] - Movement board address
+		HoleIndex    int     // Byte[5] - Position address
+		State        int     // Byte[6] - Return status
+		Reserved1    byte    // Byte[7] - 0x00
+		Reserved2    byte    // Byte[8] - 0x00
+		Area         int     // Byte[9] - Area code
+		PowerbankSN  string  // Byte[10-13] - Power bank SN
+		SOC          int     // Byte[14] - Battery percentage (0-100)
+		Temperature  int     // Byte[15] - Temperature (°C)
+		ChargeVolt   float64 // Byte[16] - Charging voltage (0.1V units)
+		ChargeCurr   float64 // Byte[17] - Charging current (0.1A units)
+		SoftVersion  int     // Byte[18] - Software version
+		HardVersion  int     // Byte[19] - Hardware version
+		Verify       byte    // Byte[20] - Verification code
+	}
+
 	CreateUserResponse struct {
 		UserID string `json:"user_id"`
 	}
@@ -490,6 +513,8 @@ func (rt *PowerBankReturnResponse) GetDescription() string {
 		return "Return failed"
 	case 0x01:
 		return "Return successful"
+	case 0x10:
+		return "Region code error"
 	case 0x11:
 		return "Failed to obtain SN"
 	case 0x12:
@@ -517,6 +542,65 @@ func (rt *PowerBankReturnResponse) GetStatus() constants.PowerbankStatus {
 		return constants.PowerbankStatus_ReturnFailed
 	case 0x01:
 		return constants.PowerbankStatus_ReturnSuccessful
+	case 0x10:
+		return constants.PowerbankStatus_ReturnRegionCodeError
+	case 0x11:
+		return constants.PowerbankStatus_FailedToObtainSn
+	case 0x12:
+		return constants.PowerbankStatus_FailedToObtainVoltageTemperatureOrOtherInformation
+	case 0x13:
+		return constants.PowerbankStatus_FailedToObtainSoftwareAndHardwareVersionInformation
+	case 0x14:
+		return constants.PowerbankStatus_BatteryLockCommandFailed
+	case 0x21:
+		return constants.PowerbankStatus_FailedToObtainSnAndMotorActionFailed
+	case 0x22:
+		return constants.PowerbankStatus_FailedToObtainVoltageTemperatureOrOtherInformationAndMotorActionFailed
+	case 0x23:
+		return constants.PowerbankStatus_BatteryLockCommandFailedAndMotorActionFailed
+	case 0x24:
+		return constants.PowerbankStatus_AntiTheftSwitchDetectionFailedAndMotorActionFailed
+	}
+	return constants.PowerbankStatus_UnknownError
+}
+
+func (rt *PowerBankReturnFixResponse) GetDescription() string {
+	switch rt.State {
+	case 0x00:
+		return "Return failed"
+	case 0x01:
+		return "Return successful"
+	case 0x10:
+		return "Region code error"
+	case 0x11:
+		return "Failed to obtain SN"
+	case 0x12:
+		return "Failed to obtain voltage, temperature, or other information"
+	case 0x13:
+		return "Failed to obtain software and hardware version information"
+	case 0x14:
+		return "Battery‑lock command failed"
+	case 0x21:
+		return "Failed to obtain SN, and motor action failed"
+	case 0x22:
+		return "Failed to obtain voltage, temperature, or other information, and motor action failed"
+	case 0x23:
+		return "Battery‑lock command failed, and motor action failed"
+	case 0x24:
+		return "Anti‑theft switch detection failed"
+	default:
+		return "Unknown error"
+	}
+}
+
+func (rt *PowerBankReturnFixResponse) GetStatus() constants.PowerbankStatus {
+	switch rt.State {
+	case 0x00:
+		return constants.PowerbankStatus_ReturnFailed
+	case 0x01:
+		return constants.PowerbankStatus_ReturnSuccessful
+	case 0x10:
+		return constants.PowerbankStatus_ReturnRegionCodeError
 	case 0x11:
 		return constants.PowerbankStatus_FailedToObtainSn
 	case 0x12:

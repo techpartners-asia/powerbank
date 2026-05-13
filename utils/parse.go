@@ -105,6 +105,32 @@ func ParseReturnPowerBankResponse(response []byte) (*powerbankModels.PowerBankRe
 		Verify:       response[14],
 	}, nil
 }
+func ParseReturnFixPowerBankResponse(response []byte) (*powerbankModels.PowerBankReturnFixResponse, error) {
+	if len(response) < 21 {
+		return nil, fmt.Errorf("invalid data length: expected at least 21 bytes, got %d", len(response))
+	}
+
+	return &powerbankModels.PowerBankReturnFixResponse{
+		Head:         response[0],
+		Length:       int(response[1])<<8 | int(response[2]),
+		Cmd:          response[3],
+		ControlIndex: int(response[4]),
+		HoleIndex:    int(response[5]),
+		State:        int(response[6]),
+		Reserved1:    response[7],
+		Reserved2:    response[8],
+		Area:         int(response[9]),
+		PowerbankSN:  strconv.FormatUint(uint64(response[10])<<24|uint64(response[11])<<16|uint64(response[12])<<8|uint64(response[13]), 10),
+		SOC:          int(response[14]),
+		Temperature:  int(response[15]),
+		ChargeVolt:   float64(response[16]) / 10.0,
+		ChargeCurr:   float64(response[17]) / 10.0,
+		SoftVersion:  int(response[18]),
+		HardVersion:  int(response[19]),
+		Verify:       response[20],
+	}, nil
+}
+
 func ParsePopupPowerBankResponse(response []byte) (*powerbankModels.PowerBankPopupResponse, error) {
 	if len(response) < 9 {
 		return nil, fmt.Errorf("invalid data length: expected at least 9 bytes, got %d", len(response))
@@ -239,6 +265,13 @@ func ParseResponse(msg mqtt.Message) (constants.PUBLISH_TYPE, interface{}, error
 			return "", nil, err
 		}
 		return constants.PUBLISH_TYPE_RETURN, response, nil
+	case 0x28: // Return-Fix (self-test) command response
+		response, err := ParseReturnFixPowerBankResponse(payload)
+		if err != nil {
+			fmt.Printf("Error parsing return-fix response: %v\n", err)
+			return "", nil, err
+		}
+		return constants.PUBLISH_TYPE_RETURN_FIX, response, nil
 	// case 0x7A: // Health check command response
 	// 	response, err := ParseHealthCheckResponse(payload)
 	// 	if err != nil {
