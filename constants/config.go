@@ -12,15 +12,25 @@ const (
 
 type PUBLISH_TYPE string
 
+// Volinks Powerbank Protocol V1 command tags. Each constant is documented at:
+// https://docs.volinks.com/powerbank-protocol-v1/en/guide/
 const (
-	PUBLISH_TYPE_POPUP         PUBLISH_TYPE = "popup_sn"
+	// Pop-up By SN — https://docs.volinks.com/powerbank-protocol-v1/en/guide/protocol-popupsn.html
+	PUBLISH_TYPE_POPUP PUBLISH_TYPE = "popup_sn"
+	// Pop-up By Hole — https://docs.volinks.com/powerbank-protocol-v1/en/guide/protocol-popup.html
 	PUBLISH_TYPE_POPUP_BY_HOLE PUBLISH_TYPE = "popup"
-	PUBLISH_TYPE_CHECK        PUBLISH_TYPE = "check"
-	PUBLISH_TYPE_UPLOAD       PUBLISH_TYPE = "upload_all"
-	PUBLISH_TYPE_RETURN       PUBLISH_TYPE = "return"
-	PUBLISH_TYPE_RETURN_FIX   PUBLISH_TYPE = "return_fix"
+	// Cabinet check — https://docs.volinks.com/powerbank-protocol-v1/en/guide/protocol-check.html
+	PUBLISH_TYPE_CHECK PUBLISH_TYPE = "check"
+	// Periodic upload trigger — https://docs.volinks.com/powerbank-protocol-v1/en/guide/protocol-upload.html
+	PUBLISH_TYPE_UPLOAD PUBLISH_TYPE = "upload_all"
+	// Standard return response tag — https://docs.volinks.com/powerbank-protocol-v1/en/guide/protocol-return.html
+	PUBLISH_TYPE_RETURN PUBLISH_TYPE = "return"
+	// Return-Fix self-test response tag — https://docs.volinks.com/powerbank-protocol-v1/en/guide/protocol-return-fix.html
+	PUBLISH_TYPE_RETURN_FIX PUBLISH_TYPE = "return_fix"
+	// Heart response tag — https://docs.volinks.com/powerbank-protocol-v1/en/guide/protocol-heart.html
 	PUBLISH_TYPE_HEALTH_CHECK PUBLISH_TYPE = "health_check"
-	PUBLISH_TYPE_LOAD_AD      PUBLISH_TYPE = "load_ad"
+	// Trigger ad refresh — https://docs.volinks.com/powerbank-protocol-v1/en/guide/protocol-advert.html
+	PUBLISH_TYPE_LOAD_AD PUBLISH_TYPE = "load_ad"
 )
 
 type CabinetSignal string

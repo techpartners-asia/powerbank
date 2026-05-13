@@ -13,6 +13,8 @@ import (
 	powerbankUtils "github.com/techpartners-asia/powerbank/utils"
 )
 
+// ApiService is the MQTT publish surface for the Volinks Powerbank Protocol V1.
+// Protocol reference: https://docs.volinks.com/powerbank-protocol-v1/en/
 type ApiService interface {
 	Publish(input powerbankModels.PublishInput) error
 }

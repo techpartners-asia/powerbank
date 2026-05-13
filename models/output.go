@@ -73,6 +73,7 @@ type (
 	}
 
 	// PowerBankPopupByHoleResponse represents the 0x21 Pop-up By Hole response (9 bytes).
+	// Spec: https://docs.volinks.com/powerbank-protocol-v1/en/guide/protocol-popup.html
 	PowerBankPopupByHoleResponse struct {
 		Head         byte // Byte[0] - 0xA8
 		Length       int  // Byte[1-2] - packet length
@@ -85,6 +86,7 @@ type (
 	}
 
 	// PowerBankPopupResponse represents the 0x31 Pop-up By SN response (12 bytes).
+	// Spec: https://docs.volinks.com/powerbank-protocol-v1/en/guide/protocol-popupsn.html
 	PowerBankPopupResponse struct {
 		Head        byte   // Byte[0] - 0xA8
 		Length      int    // Byte[1-2] - Packet length (includes header)
@@ -98,6 +100,7 @@ type (
 
 	// PowerBankReturnResponse represents the 0x40 standard Return response (15 bytes).
 	// For the 0x28 self-test variant with charge diagnostics, see PowerBankReturnFixResponse.
+	// Spec: https://docs.volinks.com/powerbank-protocol-v1/en/guide/protocol-return.html
 	PowerBankReturnResponse struct {
 		Head         byte   // Byte[0] - 0xA8
 		Length       int    // Byte[1-2] - 0x000E = 14 (excludes header byte; total frame is 15 bytes)
@@ -115,6 +118,7 @@ type (
 	// PowerBankReturnFixResponse represents the byte protocol response for
 	// the 0x28 Return-Fix (self-test) command, reported over MQTT regardless
 	// of success or failure. 21 bytes total.
+	// Spec: https://docs.volinks.com/powerbank-protocol-v1/en/guide/protocol-return-fix.html
 	PowerBankReturnFixResponse struct {
 		Head         byte    // Byte[0] - 0xA8
 		Length       int     // Byte[1-2] - 0x0015 = 21
@@ -139,7 +143,9 @@ type (
 		UserID string `json:"user_id"`
 	}
 
-	// PowerBankCheckResponse represents the byte protocol response for cabinet check
+	// PowerBankCheckResponse represents the 0x10 cabinet info frame returned by
+	// the `check` command (and the upload_all HTTP variant).
+	// Spec: https://docs.volinks.com/powerbank-protocol-v1/en/guide/protocol-check.html
 	PowerBankCheckResponse struct {
 		Head          byte           // Byte[0] - Head code (Default: 0xA8)
 		Length        int            // Byte[1-2] - Packet length
@@ -175,6 +181,9 @@ type (
 		Sensor        byte    // Byte[14] - Position detection
 	}
 
+	// PowerBankHealthCheckResponse represents the 0x7A heartbeat frame the
+	// cabinet publishes every 9 minutes to /powerbank/{uuid}/user/heart.
+	// Spec: https://docs.volinks.com/powerbank-protocol-v1/en/guide/protocol-heart.html
 	PowerBankHealthCheckResponse struct {
 		Head         byte   // Byte[0] - Head code (Default: 0xA8)
 		Length       int    // Byte[1-2] - Packet length
@@ -186,7 +195,10 @@ type (
 )
 
 // PowerBankUploadResponse is an alias for PowerBankCheckResponse — both check
-// and upload_all return the same 0x10 cabinet-info layout.
+// and upload_all return the same 0x10 cabinet-info layout. The upload_all
+// variant is delivered as an HTTP POST to /api/rentbox/client/upload rather
+// than over MQTT.
+// Spec: https://docs.volinks.com/powerbank-protocol-v1/en/guide/protocol-upload.html
 type PowerBankUploadResponse = PowerBankCheckResponse
 
 func (healthCheck *PowerBankHealthCheckResponse) GetSignalStrength() constants.CabinetSignal {
