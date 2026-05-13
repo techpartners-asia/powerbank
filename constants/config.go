@@ -13,7 +13,8 @@ const (
 type PUBLISH_TYPE string
 
 const (
-	PUBLISH_TYPE_POPUP        PUBLISH_TYPE = "popup_sn"
+	PUBLISH_TYPE_POPUP         PUBLISH_TYPE = "popup_sn"
+	PUBLISH_TYPE_POPUP_BY_HOLE PUBLISH_TYPE = "popup"
 	PUBLISH_TYPE_CHECK        PUBLISH_TYPE = "check"
 	PUBLISH_TYPE_UPLOAD       PUBLISH_TYPE = "upload_all"
 	PUBLISH_TYPE_RETURN       PUBLISH_TYPE = "return"
@@ -84,4 +85,6 @@ const (
 	PowerbankStatus_BatteryLockCommandFailedAndMotorActionFailed                           PowerbankStatus = "battery-lock-command-failed-and-motor-action-failed"
 	PowerbankStatus_AntiTheftSwitchDetectionFailedAndMotorActionFailed                     PowerbankStatus = "anti-theft-switch-detection-failed-and-motor-action-failed"
 	PowerbankStatus_ReturnRegionCodeError                                                  PowerbankStatus = "return-region-code-error"
+	PowerbankStatus_PopupTimestampRetrievalFailed                                          PowerbankStatus = "popup-timestamp-retrieval-failed"
+	PowerbankStatus_PopupTTLExceeded                                                       PowerbankStatus = "popup-ttl-exceeded"
 )

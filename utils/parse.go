@@ -131,6 +131,23 @@ func ParseReturnFixPowerBankResponse(response []byte) (*powerbankModels.PowerBan
 	}, nil
 }
 
+func ParsePopupByHolePowerBankResponse(response []byte) (*powerbankModels.PowerBankPopupByHoleResponse, error) {
+	if len(response) < 9 {
+		return nil, fmt.Errorf("invalid data length: expected at least 9 bytes, got %d", len(response))
+	}
+
+	return &powerbankModels.PowerBankPopupByHoleResponse{
+		Head:         response[0],
+		Length:       int(response[1])<<8 | int(response[2]),
+		Cmd:          response[3],
+		ControlIndex: int(response[4]),
+		HoleIndex:    int(response[5]),
+		State:        int(response[6]),
+		Reserved:     response[7],
+		Verify:       response[8],
+	}, nil
+}
+
 func ParsePopupPowerBankResponse(response []byte) (*powerbankModels.PowerBankPopupResponse, error) {
 	if len(response) < 9 {
 		return nil, fmt.Errorf("invalid data length: expected at least 9 bytes, got %d", len(response))
@@ -258,6 +275,13 @@ func ParseResponse(msg mqtt.Message) (constants.PUBLISH_TYPE, interface{}, error
 			return "", nil, err
 		}
 		return constants.PUBLISH_TYPE_POPUP, response, nil
+	case 0x21: // Pop-up By Hole response
+		response, err := ParsePopupByHolePowerBankResponse(payload)
+		if err != nil {
+			fmt.Printf("Error parsing popup-by-hole response: %v\n", err)
+			return "", nil, err
+		}
+		return constants.PUBLISH_TYPE_POPUP_BY_HOLE, response, nil
 	case 0x40: // Return command response
 		response, err := ParseReturnPowerBankResponse(payload)
 		if err != nil {

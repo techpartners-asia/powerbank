@@ -72,6 +72,18 @@ type (
 		CreatedAt                        time.Time   `json:"created_at"`
 	}
 
+	// PowerBankPopupByHoleResponse represents the 0x21 Pop-up By Hole response (9 bytes).
+	PowerBankPopupByHoleResponse struct {
+		Head         byte // Byte[0] - 0xA8
+		Length       int  // Byte[1-2] - packet length
+		Cmd          byte // Byte[3] - 0x21
+		ControlIndex int  // Byte[4] - Control board address
+		HoleIndex    int  // Byte[5] - Position number
+		State        int  // Byte[6] - Pop-up state
+		Reserved     byte // Byte[7] - 0x00
+		Verify       byte // Byte[8] - Check code
+	}
+
 	// PowerBankPopupResponse represents the byte protocol response for power bank pop-up
 	PowerBankPopupResponse struct {
 		Head          byte   // Byte[0] - Head code (Default: 0xA8)
@@ -84,25 +96,20 @@ type (
 		Verify        byte   // Byte[8] - Check code
 	}
 
-	// PowerBankReturnResponse represents the byte protocol response for power bank return
+	// PowerBankReturnResponse represents the 0x40 standard Return response (15 bytes).
+	// For the 0x28 self-test variant with charge diagnostics, see PowerBankReturnFixResponse.
 	PowerBankReturnResponse struct {
-		Head         byte    // Byte[0] - Header code (Default: 0xA8)
-		Length       int     // Byte[1-2] - Packet length (Default: 0x0015 = 21)
-		Cmd          byte    // Byte[3] - Command name (Default: 0x28)
-		ControlIndex int     // Byte[4] - Movement board address (Default: 0x10)
-		HoleIndex    int     // Byte[5] - Position address (Default: 0x01)
-		State        int     // Byte[6] - Return status
-		Undefined1   int     // Byte[7] - Reserved 1 (Default: 0x00)
-		Undefined2   int     // Byte[8] - Reserved 2 (Default: 0x00)
-		Area         int     // Byte[9] - Area code
-		PowerbankSN  string  // Byte[10-13] - Power bank SN
-		SOC          int     // Byte[14] - Power (0-255%)
-		Temperature  int     // Byte[15] - Temperature (0-100℃)
-		ChargeVolt   float64 // Byte[16] - Charging voltage (1 decimal place)
-		ChargeCurr   float64 // Byte[17] - Charging current (1 decimal place)
-		SoftVersion  int     // Byte[18] - Software version number
-		HardVersion  int     // Byte[19] - Hardware version number
-		Verify       byte    // Byte[20] - Verification code
+		Head         byte   // Byte[0] - 0xA8
+		Length       int    // Byte[1-2] - 0x000E = 14 (excludes header byte; total frame is 15 bytes)
+		Cmd          byte   // Byte[3] - 0x40
+		ControlIndex int    // Byte[4] - Control board address
+		HoleIndex    int    // Byte[5] - Position address
+		Area         int    // Byte[6] - Area code
+		PowerbankSN  string // Byte[7-10] - Power bank SN
+		State        int    // Byte[11] - Return status
+		SoftVersion  int    // Byte[12] - Power bank version
+		SOC          int    // Byte[13] - Battery percentage (0-100)
+		Verify       byte   // Byte[14] - Verification code
 	}
 
 	// PowerBankReturnFixResponse represents the byte protocol response for
@@ -617,6 +624,47 @@ func (rt *PowerBankReturnFixResponse) GetStatus() constants.PowerbankStatus {
 		return constants.PowerbankStatus_BatteryLockCommandFailedAndMotorActionFailed
 	case 0x24:
 		return constants.PowerbankStatus_AntiTheftSwitchDetectionFailedAndMotorActionFailed
+	}
+	return constants.PowerbankStatus_UnknownError
+}
+
+func (p *PowerBankPopupByHoleResponse) GetDescription() string {
+	switch p.State {
+	case 0x00:
+		return "Pop-up failed"
+	case 0x01:
+		return "Pop-up successful"
+	case 0x11:
+		return "Serial timeout"
+	case 0x12:
+		return "SN readable but power bank not ejected"
+	case 0x87:
+		return "Timestamp retrieval failed"
+	case 0x88:
+		return "TTL exceeded"
+	case 0xFF:
+		return "Command parsing failed"
+	default:
+		return "Unknown error"
+	}
+}
+
+func (p *PowerBankPopupByHoleResponse) GetStatus() constants.PowerbankStatus {
+	switch p.State {
+	case 0x00:
+		return constants.PowerbankStatus_PopupFailed
+	case 0x01:
+		return constants.PowerbankStatus_PopupSuccessful
+	case 0x11:
+		return constants.PowerbankStatus_FailedToObtainSn
+	case 0x12:
+		return constants.PowerbankStatus_PopupCompleteMotorHomeSnReadable
+	case 0x87:
+		return constants.PowerbankStatus_PopupTimestampRetrievalFailed
+	case 0x88:
+		return constants.PowerbankStatus_PopupTTLExceeded
+	case 0xFF:
+		return constants.PowerbankStatus_PopupCommandParsingFailed
 	}
 	return constants.PowerbankStatus_UnknownError
 }

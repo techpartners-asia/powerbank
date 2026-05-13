@@ -32,8 +32,9 @@ type (
 	PublishInput struct {
 		ClientID    string // EMQX Client ID = IMEI ID
 		PublishType constants.PUBLISH_TYPE
-		Data        string // power bank SN
-		Timestamp   string // optional Unix timestamp (seconds) — popup_sn enhanced form
-		TTL         string // optional effective time in seconds — popup_sn enhanced form
+		Data        string // power bank SN (popup_sn) or hole number (popup)
+		IO          string // optional main control board serial port for popup ("0" or "1", default "0")
+		Timestamp   string // optional Unix timestamp (seconds) — popup_sn / popup enhanced form
+		TTL         string // optional effective time in seconds — popup_sn / popup enhanced form
 	}
 )

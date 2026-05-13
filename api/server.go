@@ -99,6 +99,19 @@ func (s *apiService) Publish(input powerbankModels.PublishInput) error {
 		payload = (fmt.Sprintf("{\"cmd\":\"%v\"}", constants.PUBLISH_TYPE_CHECK))
 		topic = fmt.Sprintf(string(constants.TOPIC_PUBLISH), input.ClientID)
 		break
+	case constants.PUBLISH_TYPE_POPUP_BY_HOLE:
+		io := input.IO
+		if io == "" {
+			io = "0"
+		}
+		if input.Timestamp != "" && input.TTL != "" {
+			payload = fmt.Sprintf("{\"cmd\":\"%v\",\"data\":\"%v\",\"io\":\"%v\",\"timestamp\":\"%v\",\"ttl\":\"%v\"}",
+				constants.PUBLISH_TYPE_POPUP_BY_HOLE, input.Data, io, input.Timestamp, input.TTL)
+		} else {
+			payload = fmt.Sprintf("{\"cmd\":\"%v\",\"data\":\"%v\",\"io\":\"%v\"}",
+				constants.PUBLISH_TYPE_POPUP_BY_HOLE, input.Data, io)
+		}
+		topic = fmt.Sprintf(string(constants.TOPIC_PUBLISH), input.ClientID)
 	case constants.PUBLISH_TYPE_POPUP:
 		if input.Timestamp != "" && input.TTL != "" {
 			payload = fmt.Sprintf("{\"cmd\":\"%v\",\"data\":\"%v\",\"timestamp\":\"%v\",\"ttl\":\"%v\"}",
