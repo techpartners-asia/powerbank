@@ -84,16 +84,16 @@ type (
 		Verify       byte // Byte[8] - Check code
 	}
 
-	// PowerBankPopupResponse represents the byte protocol response for power bank pop-up
+	// PowerBankPopupResponse represents the 0x31 Pop-up By SN response (12 bytes).
 	PowerBankPopupResponse struct {
-		Head          byte   // Byte[0] - Head code (Default: 0xA8)
-		Length        int    // Byte[1-2] - Packet length
-		Cmd           byte   // Byte[3] - Command name (Default: 0x31)
-		ControlIndex  int    // Byte[4] - Control board address
-		PowerbankSN   string // Byte[5-8] - Power bank SN
-		State         int    // Byte[6] - Popup state
-		SolenoidValve int    // Byte[7] - Solenoid valve status
-		Verify        byte   // Byte[8] - Check code
+		Head        byte   // Byte[0] - 0xA8
+		Length      int    // Byte[1-2] - Packet length (includes header)
+		Cmd         byte   // Byte[3] - 0x31
+		HoleIndex   int    // Byte[4] - Cabinet slot number (1-100)
+		PowerbankSN string // Byte[5-8] - Power bank SN
+		State       int    // Byte[9] - Popup state
+		Reserved    byte   // Byte[10] - 0x00
+		Verify      byte   // Byte[11] - Check code
 	}
 
 	// PowerBankReturnResponse represents the 0x40 standard Return response (15 bytes).
@@ -422,43 +422,31 @@ func (hole *Hole) GetStatus() constants.PowerbankStatus {
 	}
 }
 
+// GetStatus maps the popup_sn (0x31) state byte to a status constant per the
+// protocol-popupsn.html spec. Any byte outside the documented set returns
+// PowerbankStatus_UnknownError.
 func (popup *PowerBankPopupResponse) GetStatus() constants.PowerbankStatus {
-
 	switch popup.State {
 	case 0x00:
 		return constants.PowerbankStatus_PopupFailed
 	case 0x01:
 		return constants.PowerbankStatus_PopupSuccessful
-	case 0x02:
-		return constants.PowerbankStatus_PowerSupplyChargingAbnormally
-	case 0x03:
-		return constants.PowerbankStatus_CommunicationAbnormalityFirstReturnFailed
-	case 0x04:
-		return constants.PowerbankStatus_SlotCannotPopOut
-	case 0x05:
-		return constants.PowerbankStatus_SlotForciblyReleased
-	case 0x06:
-		return constants.PowerbankStatus_SolenoidNotReturned
-	case 0x08:
-		return constants.PowerbankStatus_AntiTheftCommFailed
 	case 0x11:
-		return constants.PowerbankStatus_FailedToObtainSn
+		return constants.PowerbankStatus_PopupSerialTimeout
 	case 0x12:
-		return constants.PowerbankStatus_PopupCompleteMotorHomeSnReadable
-	case 0x13:
-		return constants.PowerbankStatus_FailedToObtainTraceback
-	case 0x14:
-		return constants.PowerbankStatus_BatteryLockCommandFailed
-	case 0x21:
-		return constants.PowerbankStatus_SnAcquisitionAndMotorFailed
-	case 0x22:
-		return constants.PowerbankStatus_InfoAcquisitionAndMotorFailed
-	case 0x23:
-		return constants.PowerbankStatus_BatteryLockAndMotorFailed
-	case 0x24:
-		return constants.PowerbankStatus_AntiTheftSwitchDetectionFailed
+		return constants.PowerbankStatus_PopupBankUnpoppedSnReadable
+	case 0x87:
+		return constants.PowerbankStatus_PopupTimestampRetrievalFailed
+	case 0x88:
+		return constants.PowerbankStatus_PopupTTLExceeded
+	case 0xFB:
+		return constants.PowerbankStatus_PopupNoMatchingBattery
 	case 0xFC:
 		return constants.PowerbankStatus_PopupTargetSnNotFound
+	case 0xFD:
+		return constants.PowerbankStatus_PopupAddTaskFailed
+	case 0xFE:
+		return constants.PowerbankStatus_PopupPreviousRentalIncomplete
 	case 0xFF:
 		return constants.PowerbankStatus_PopupCommandParsingFailed
 	default:
@@ -466,46 +454,31 @@ func (popup *PowerBankPopupResponse) GetStatus() constants.PowerbankStatus {
 	}
 }
 
-// GetDescription converts the byte held in popup.State into a
-// human‑readable explanation of what went wrong (or right).
+// GetDescription returns a human-readable explanation of the popup_sn state.
 func (popup *PowerBankPopupResponse) GetDescription() string {
 	switch popup.State {
 	case 0x00:
-		return "Pop‑up failed"
+		return "Pop-up failed"
 	case 0x01:
-		return "Pop‑up successful"
-	case 0x02:
-		return "Power‑supply charging abnormally"
-	case 0x03:
-		return "Communication abnormality (first return failed)"
-	case 0x04:
-		return "This slot cannot pop out a mobile power supply normally"
-	case 0x05:
-		return "Slot forcibly released"
-	case 0x06:
-		return "Solenoid valve did not return to home position"
-	case 0x08:
-		return "Anti‑theft protocol communication failed"
+		return "Pop-up successful"
 	case 0x11:
-		return "Failed to obtain SN"
+		return "Serial communication timeout"
 	case 0x12:
-		return "Pop‑up completed; motor is home and SN can be read"
-	case 0x13:
-		return "Failed to obtain traceback information"
-	case 0x14:
-		return "Battery‑lock command failed"
-	case 0x21:
-		return "Failed to obtain SN and motor action failed"
-	case 0x22:
-		return "Failed to obtain all information and motor operation failed"
-	case 0x23:
-		return "Battery‑lock command failed and motor action failed"
-	case 0x24:
-		return "Anti‑theft‑switch detection failed"
+		return "Power bank has not popped out, but the SN is readable"
+	case 0x87:
+		return "Failed to obtain the timestamp"
+	case 0x88:
+		return "Exceeded the TTL validity period"
+	case 0xFB:
+		return "No portable charger meets the rental requirements"
 	case 0xFC:
-		return "Target SN not found"
+		return "Target SN not found among charging batteries"
+	case 0xFD:
+		return "Failed to add task to the thread pool"
+	case 0xFE:
+		return "Previous rental not completed; new rental cannot start"
 	case 0xFF:
-		return "Command parsing failed"
+		return "Lease command parsing failed"
 	default:
 		return "Unknown error"
 	}

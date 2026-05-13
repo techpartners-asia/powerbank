@@ -87,4 +87,9 @@ const (
 	PowerbankStatus_ReturnRegionCodeError                                                  PowerbankStatus = "return-region-code-error"
 	PowerbankStatus_PopupTimestampRetrievalFailed                                          PowerbankStatus = "popup-timestamp-retrieval-failed"
 	PowerbankStatus_PopupTTLExceeded                                                       PowerbankStatus = "popup-ttl-exceeded"
+	PowerbankStatus_PopupSerialTimeout                                                     PowerbankStatus = "popup-serial-timeout"
+	PowerbankStatus_PopupBankUnpoppedSnReadable                                            PowerbankStatus = "popup-bank-unpopped-sn-readable"
+	PowerbankStatus_PopupNoMatchingBattery                                                 PowerbankStatus = "popup-no-matching-battery"
+	PowerbankStatus_PopupAddTaskFailed                                                     PowerbankStatus = "popup-add-task-failed"
+	PowerbankStatus_PopupPreviousRentalIncomplete                                          PowerbankStatus = "popup-previous-rental-incomplete"
 )

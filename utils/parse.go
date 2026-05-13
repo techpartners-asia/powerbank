@@ -82,14 +82,14 @@ func ParsePopupPowerBankResponse(response []byte) (*powerbankModels.PowerBankPop
 	}
 
 	return &powerbankModels.PowerBankPopupResponse{
-		Head:          response[0],
-		Length:        int(response[1])<<8 | int(response[2]),
-		Cmd:           response[3],
-		ControlIndex:  int(response[4]),
-		PowerbankSN:   strconv.FormatUint(uint64(response[5])<<24|uint64(response[6])<<16|uint64(response[7])<<8|uint64(response[8]), 10),
-		State:         int(response[9]),
-		SolenoidValve: int(response[10]),
-		Verify:        response[11],
+		Head:        response[0],
+		Length:      int(response[1])<<8 | int(response[2]),
+		Cmd:         response[3],
+		HoleIndex:   int(response[4]),
+		PowerbankSN: strconv.FormatUint(uint64(response[5])<<24|uint64(response[6])<<16|uint64(response[7])<<8|uint64(response[8]), 10),
+		State:       int(response[9]),
+		Reserved:    response[10],
+		Verify:      response[11],
 	}, nil
 }
 func ParseCheckResponse(response []byte) (*powerbankModels.PowerBankCheckResponse, error) {

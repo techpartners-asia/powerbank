@@ -2,6 +2,7 @@ package powerbankUtils
 
 import (
 	"encoding/hex"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -30,14 +31,14 @@ func TestParsePopupPowerBankResponse(t *testing.T) {
 	}
 
 	want := &powerbankModels.PowerBankPopupResponse{
-		Head:          0xA8,
-		Length:        0x000C,
-		Cmd:           0x31,
-		ControlIndex:  0x60,
-		PowerbankSN:   "10211856",
-		State:         0x01,
-		SolenoidValve: 0x00,
-		Verify:        0x3B,
+		Head:        0xA8,
+		Length:      0x000C,
+		Cmd:         0x31,
+		HoleIndex:   0x60,
+		PowerbankSN: "10211856",
+		State:       0x01,
+		Reserved:    0x00,
+		Verify:      0x3B,
 	}
 
 	if *got != *want {
@@ -119,6 +120,69 @@ func TestParseResponseDispatch(t *testing.T) {
 			}
 			if res == nil {
 				t.Errorf("nil response struct")
+			}
+		})
+	}
+}
+
+// TestParseHealthCheckResponse uses the example frame from
+// docs.volinks.com/powerbank-protocol-v1/en/guide/protocol-heart.html
+// "A8 00 11 7A 10 43 53 51 3A 32 37 3B 42 50 3A 30 FC" → signal "CSQ:27;BP:0"
+func TestParseHealthCheckResponse(t *testing.T) {
+	payload := fromHex(t, "A8 00 11 7A 10 43 53 51 3A 32 37 3B 42 50 3A 30 FC")
+
+	got, err := ParseHealthCheckResponse(payload)
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+
+	if got.Head != 0xA8 || got.Cmd != 0x7A || got.Length != 0x0011 {
+		t.Errorf("header mismatch: head=%#x cmd=%#x len=%d", got.Head, got.Cmd, got.Length)
+	}
+	if got.ControlIndex != 0x10 {
+		t.Errorf("controlIndex: got %d want 16", got.ControlIndex)
+	}
+	if got.Signal != "CSQ:27;BP:0" {
+		t.Errorf("signal: got %q want %q", got.Signal, "CSQ:27;BP:0")
+	}
+	if got.Verify != 0xFC {
+		t.Errorf("verify: got %#x want 0xFC", got.Verify)
+	}
+	if got.GetBackupPowerStatus() != 0 {
+		t.Errorf("BP: got %d want 0", got.GetBackupPowerStatus())
+	}
+}
+
+// TestParsePopupResponseStates verifies the popup_sn state mapping covers
+// every state byte enumerated in protocol-popupsn.html.
+func TestParsePopupResponseStates(t *testing.T) {
+	cases := []struct {
+		state     byte
+		wantStat  constants.PowerbankStatus
+		wantDescr string
+	}{
+		{0x00, constants.PowerbankStatus_PopupFailed, "Pop-up failed"},
+		{0x01, constants.PowerbankStatus_PopupSuccessful, "Pop-up successful"},
+		{0x11, constants.PowerbankStatus_PopupSerialTimeout, "Serial communication timeout"},
+		{0x12, constants.PowerbankStatus_PopupBankUnpoppedSnReadable, "Power bank has not popped out, but the SN is readable"},
+		{0x87, constants.PowerbankStatus_PopupTimestampRetrievalFailed, "Failed to obtain the timestamp"},
+		{0x88, constants.PowerbankStatus_PopupTTLExceeded, "Exceeded the TTL validity period"},
+		{0xFB, constants.PowerbankStatus_PopupNoMatchingBattery, "No portable charger meets the rental requirements"},
+		{0xFC, constants.PowerbankStatus_PopupTargetSnNotFound, "Target SN not found among charging batteries"},
+		{0xFD, constants.PowerbankStatus_PopupAddTaskFailed, "Failed to add task to the thread pool"},
+		{0xFE, constants.PowerbankStatus_PopupPreviousRentalIncomplete, "Previous rental not completed; new rental cannot start"},
+		{0xFF, constants.PowerbankStatus_PopupCommandParsingFailed, "Lease command parsing failed"},
+		{0x7A, constants.PowerbankStatus_UnknownError, "Unknown error"},
+	}
+
+	for _, tc := range cases {
+		t.Run(fmt.Sprintf("state_%#x", tc.state), func(t *testing.T) {
+			r := &powerbankModels.PowerBankPopupResponse{State: int(tc.state)}
+			if got := r.GetStatus(); got != tc.wantStat {
+				t.Errorf("GetStatus: got %q want %q", got, tc.wantStat)
+			}
+			if got := r.GetDescription(); got != tc.wantDescr {
+				t.Errorf("GetDescription: got %q want %q", got, tc.wantDescr)
 			}
 		})
 	}
