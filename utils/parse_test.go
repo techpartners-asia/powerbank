@@ -200,3 +200,50 @@ func TestParseResponseUnknownCommand(t *testing.T) {
 		t.Errorf("expected error for unknown cmd")
 	}
 }
+
+// TestParsePopupResponseRejectsShortFrame is the regression guard for the 0x31
+// dispense-ACK parser: it reads up to response[11], so a 9–11 byte frame (which the
+// old len<9 guard let through) must now return an error rather than index-panic.
+func TestParsePopupResponseRejectsShortFrame(t *testing.T) {
+	full := fromHex(t, "A8 00 0C 31 60 00 9B D2 10 01 00 3B") // 12 bytes, valid
+	for _, n := range []int{0, 4, 9, 10, 11} {
+		if _, err := ParsePopupPowerBankResponse(full[:n]); err == nil {
+			t.Errorf("len %d: expected error, got nil", n)
+		}
+	}
+	if _, err := ParsePopupPowerBankResponse(full); err != nil {
+		t.Errorf("full 12-byte frame: unexpected error %v", err)
+	}
+}
+
+// TestParsersNeverPanicOnTruncation feeds every truncation prefix of a representative
+// frame through each parser and asserts it never panics — locking the "parsing is
+// panic-free by design" invariant for untrusted device input.
+func TestParsersNeverPanicOnTruncation(t *testing.T) {
+	parsers := []struct {
+		name  string
+		frame string
+		call  func([]byte)
+	}{
+		{"popup_sn(0x31)", "A8 00 0C 31 60 00 9B D2 10 01 00 3B", func(b []byte) { _, _ = ParsePopupPowerBankResponse(b) }},
+		{"popup_hole(0x21)", "A8 00 09 21 01 05 01 00 2D", func(b []byte) { _, _ = ParsePopupByHolePowerBankResponse(b) }},
+		{"return(0x40)", "A8 00 0E 40 01 05 00 05 11 49 F1 01 0D 64 2A", func(b []byte) { _, _ = ParseReturnPowerBankResponse(b) }},
+		{"return_fix(0x28)", "A8 00 15 28 01 05 01 00 00 00 05 11 49 F1 64 1F 32 01 04 00 7E", func(b []byte) { _, _ = ParseReturnFixPowerBankResponse(b) }},
+		{"check(0x10)", "A8 00 1A 10 01 FF FF 00 04 16 01 01 00 EC 00 05 11 49 F1 64 1F 32 01 0D 00 D8", func(b []byte) { _, _ = ParseCheckResponse(b) }},
+		{"heart(0x7A)", "A8 00 11 7A 10 43 53 51 3A 32 37 3B 42 50 3A 30 FC", func(b []byte) { _, _ = ParseHealthCheckResponse(b) }},
+	}
+	for _, p := range parsers {
+		full := fromHex(t, p.frame)
+		for n := 0; n <= len(full); n++ {
+			n := n
+			func() {
+				defer func() {
+					if r := recover(); r != nil {
+						t.Errorf("%s prefix len %d panicked: %v", p.name, n, r)
+					}
+				}()
+				p.call(full[:n])
+			}()
+		}
+	}
+}
