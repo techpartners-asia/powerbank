@@ -136,6 +136,9 @@ func (s *apiService) Publish(input powerbankModels.PublishInput) error {
 	case constants.PUBLISH_TYPE_CHECK:
 		payload = fmt.Sprintf("{\"cmd\":\"%v\"}", constants.PUBLISH_TYPE_CHECK)
 		topic = fmt.Sprintf(string(constants.TOPIC_PUBLISH), input.ClientID)
+	case constants.PUBLISH_TYPE_REBOOT:
+		payload = fmt.Sprintf("{\"cmd\":\"%v\"}", constants.PUBLISH_TYPE_REBOOT)
+		topic = fmt.Sprintf(string(constants.TOPIC_PUBLISH), input.ClientID)
 	case constants.PUBLISH_TYPE_POPUP_BY_HOLE:
 		io := input.IO
 		if io == "" {
