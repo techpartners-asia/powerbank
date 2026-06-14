@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -17,6 +18,13 @@ import (
 // dispense this is the wait for the broker PUBACK; without a bound a slow or
 // unreachable broker could stall the caller (the dispense path) indefinitely.
 const publishWaitTimeout = 10 * time.Second
+
+// defaultPopupTTLSeconds is the eject-validity window applied to a popup that the
+// caller did not stamp with a ttl. A dispense MUST carry a timestamp+ttl so the
+// cabinet can reject a stale command (reply 0x88, no eject) — that is what makes
+// reliable (QoS 1) delivery safe. Defaulting here guarantees no caller can publish
+// an unguarded popup that could eject arbitrarily late.
+const defaultPopupTTLSeconds = 30
 
 // ApiService is the MQTT publish surface for the Volinks Powerbank Protocol V1.
 // Protocol reference: https://docs.volinks.com/powerbank-protocol-v1/en/
@@ -43,6 +51,16 @@ func NewServer(input powerbankModels.ServerInput) (ApiService, error) {
 	// Subscription handlers are defined once so the OnConnect handler can
 	// (re)attach them on every connect AND reconnect.
 	onUpdate := func(_ mqtt.Client, msg mqtt.Message) {
+		// Parsing below is panic-free by design (every parser bounds-checks its input).
+		// This recover is the isolation boundary around the host's CallbackSubscribe —
+		// code the SDK does not control, run here in paho's receive goroutine, where an
+		// unrecovered panic would terminate the whole process. It is logged loudly
+		// (not swallowed) so a host-callback bug surfaces instead of hiding.
+		defer func() {
+			if r := recover(); r != nil {
+				fmt.Fprintf(os.Stderr, "[powerbank-sdk] recovered panic in update handler: %v\n", r)
+			}
+		}()
 		typ, res, err := powerbankUtils.ParseResponse(msg.Payload())
 		if err != nil {
 			if input.Debug {
@@ -63,6 +81,11 @@ func NewServer(input powerbankModels.ServerInput) (ApiService, error) {
 	}
 
 	onHeart := func(_ mqtt.Client, msg mqtt.Message) {
+		defer func() {
+			if r := recover(); r != nil {
+				fmt.Fprintf(os.Stderr, "[powerbank-sdk] recovered panic in heart handler: %v\n", r)
+			}
+		}()
 		parts := strings.Split(msg.Topic(), "/")
 		if len(parts) < 3 || parts[2] == "" {
 			return
@@ -143,6 +166,18 @@ func (s *apiService) Publish(input powerbankModels.PublishInput) error {
 	// in-window delivery reliable. A popup WITHOUT a ttl must stay QoS 0, since a
 	// redelivered ttl-less command could eject the bank arbitrarily late.
 	var qos byte
+
+	// Guarantee every dispense carries a timestamp+ttl so it is always TTL-guarded
+	// (and therefore safe to send at QoS 1). A caller that omits them gets the
+	// defaults rather than an unguarded popup.
+	if input.PublishType == constants.PUBLISH_TYPE_POPUP || input.PublishType == constants.PUBLISH_TYPE_POPUP_BY_HOLE {
+		if input.Timestamp == "" {
+			input.Timestamp = strconv.FormatInt(time.Now().Unix(), 10)
+		}
+		if input.TTL == "" {
+			input.TTL = strconv.Itoa(defaultPopupTTLSeconds)
+		}
+	}
 
 	switch input.PublishType {
 	case constants.PUBLISH_TYPE_CHECK:
