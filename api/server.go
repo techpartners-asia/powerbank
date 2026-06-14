@@ -13,6 +13,11 @@ import (
 	powerbankUtils "github.com/techpartners-asia/powerbank/utils"
 )
 
+// publishWaitTimeout bounds how long Publish waits for completion. For a QoS 1
+// dispense this is the wait for the broker PUBACK; without a bound a slow or
+// unreachable broker could stall the caller (the dispense path) indefinitely.
+const publishWaitTimeout = 10 * time.Second
+
 // ApiService is the MQTT publish surface for the Volinks Powerbank Protocol V1.
 // Protocol reference: https://docs.volinks.com/powerbank-protocol-v1/en/
 type ApiService interface {
@@ -131,6 +136,13 @@ func (s *apiService) Disconnect() {
 func (s *apiService) Publish(input powerbankModels.PublishInput) error {
 	var payload string
 	var topic string
+	// qos defaults to 0 (fire-and-forget). Dispense commands are upgraded to QoS 1
+	// ONLY when they carry a timestamp+ttl: the cabinet rejects a dispense received
+	// more than ttl seconds after the timestamp (protocol reply 0x88, no eject), so
+	// QoS 1's retry/redelivery cannot cause a late or surprise eject — it only makes
+	// in-window delivery reliable. A popup WITHOUT a ttl must stay QoS 0, since a
+	// redelivered ttl-less command could eject the bank arbitrarily late.
+	var qos byte
 
 	switch input.PublishType {
 	case constants.PUBLISH_TYPE_CHECK:
@@ -147,6 +159,7 @@ func (s *apiService) Publish(input powerbankModels.PublishInput) error {
 		if input.Timestamp != "" && input.TTL != "" {
 			payload = fmt.Sprintf("{\"cmd\":\"%v\",\"data\":\"%v\",\"io\":\"%v\",\"timestamp\":\"%v\",\"ttl\":\"%v\"}",
 				constants.PUBLISH_TYPE_POPUP_BY_HOLE, input.Data, io, input.Timestamp, input.TTL)
+			qos = 1 // safe: ttl bounds any late delivery (see qos declaration)
 		} else {
 			payload = fmt.Sprintf("{\"cmd\":\"%v\",\"data\":\"%v\",\"io\":\"%v\"}",
 				constants.PUBLISH_TYPE_POPUP_BY_HOLE, input.Data, io)
@@ -156,6 +169,7 @@ func (s *apiService) Publish(input powerbankModels.PublishInput) error {
 		if input.Timestamp != "" && input.TTL != "" {
 			payload = fmt.Sprintf("{\"cmd\":\"%v\",\"data\":\"%v\",\"timestamp\":\"%v\",\"ttl\":\"%v\"}",
 				constants.PUBLISH_TYPE_POPUP, input.Data, input.Timestamp, input.TTL)
+			qos = 1 // safe: ttl bounds any late delivery (see qos declaration)
 		} else {
 			payload = fmt.Sprintf("{\"cmd\":\"%v\",\"data\":\"%v\"}", constants.PUBLISH_TYPE_POPUP, input.Data)
 		}
@@ -170,8 +184,13 @@ func (s *apiService) Publish(input powerbankModels.PublishInput) error {
 		return fmt.Errorf("invalid publish type: %v", input.PublishType)
 	}
 
-	token := s.client.Publish(topic, 0, false, payload)
-	token.Wait()
+	token := s.client.Publish(topic, qos, false, payload)
+	// Bound the wait: a QoS 1 publish blocks until the broker PUBACKs, so without a
+	// timeout a slow/unreachable broker could stall the dispense indefinitely. QoS 0
+	// completes effectively immediately.
+	if !token.WaitTimeout(publishWaitTimeout) {
+		return fmt.Errorf("mqtt publish timed out after %s (topic=%s, qos=%d)", publishWaitTimeout, topic, qos)
+	}
 	if err := token.Error(); err != nil {
 		return fmt.Errorf("mqtt publish: %w", err)
 	}
