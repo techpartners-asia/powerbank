@@ -31,6 +31,8 @@ const (
 	PUBLISH_TYPE_HEALTH_CHECK PUBLISH_TYPE = "health_check"
 	// Trigger ad refresh — https://docs.volinks.com/powerbank-protocol-v1/en/guide/protocol-advert.html
 	PUBLISH_TYPE_LOAD_AD PUBLISH_TYPE = "load_ad"
+	// Reboot the cabinet (resets main control board) — https://docs.volinks.com/powerbank-protocol-v1/en/guide/protocol-reboot.html
+	PUBLISH_TYPE_REBOOT PUBLISH_TYPE = "reboot"
 )
 
 type CabinetSignal string
