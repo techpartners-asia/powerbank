@@ -17,6 +17,10 @@ import (
 // Protocol reference: https://docs.volinks.com/powerbank-protocol-v1/en/
 type ApiService interface {
 	Publish(input powerbankModels.PublishInput) error
+	// Disconnect cleanly closes the underlying MQTT connection. Call this before
+	// dropping an ApiService (e.g. when rebuilding it) so the old client and its
+	// background goroutines do not leak.
+	Disconnect()
 }
 
 type apiService struct {
@@ -31,24 +35,9 @@ func NewServer(input powerbankModels.ServerInput) (ApiService, error) {
 		mqtt.ERROR = log.New(os.Stderr, "[mqtt-err] ", log.LstdFlags)
 	}
 
-	opts := mqtt.NewClientOptions().AddBroker(fmt.Sprintf("tcp://%s:%s", input.Host, input.Port))
-	opts.SetUsername(input.Username)
-	opts.SetPassword(input.Password)
-	opts.SetKeepAlive(60 * time.Second)
-
-	if input.Debug {
-		opts.SetDefaultPublishHandler(func(client mqtt.Client, msg mqtt.Message) {
-			fmt.Printf("TOPIC: %s\n", msg.Topic())
-			fmt.Printf("MSG: %s\n", msg.Payload())
-		})
-	}
-
-	c := mqtt.NewClient(opts)
-	if token := c.Connect(); token.Wait() && token.Error() != nil {
-		return nil, fmt.Errorf("mqtt connect: %w", token.Error())
-	}
-
-	c.Subscribe(string(constants.TOPIC_SUBSCRIBE), 0, func(client mqtt.Client, msg mqtt.Message) {
+	// Subscription handlers are defined once so the OnConnect handler can
+	// (re)attach them on every connect AND reconnect.
+	onUpdate := func(_ mqtt.Client, msg mqtt.Message) {
 		typ, res, err := powerbankUtils.ParseResponse(msg.Payload())
 		if err != nil {
 			if input.Debug {
@@ -66,9 +55,9 @@ func NewServer(input powerbankModels.ServerInput) (ApiService, error) {
 		}
 
 		input.CallbackSubscribe(typ, parts[2], res)
-	})
+	}
 
-	c.Subscribe("/powerbank/+/user/heart", 0, func(client mqtt.Client, msg mqtt.Message) {
+	onHeart := func(_ mqtt.Client, msg mqtt.Message) {
 		parts := strings.Split(msg.Topic(), "/")
 		if len(parts) < 3 || parts[2] == "" {
 			return
@@ -86,9 +75,54 @@ func NewServer(input powerbankModels.ServerInput) (ApiService, error) {
 		if input.Debug {
 			fmt.Printf("[heart] device=%s signal=%v backup=%v\n", deviceID, res.GetSignalStrength(), res.GetBackupPowerStatus())
 		}
+	}
+
+	opts := mqtt.NewClientOptions().AddBroker(fmt.Sprintf("tcp://%s:%s", input.Host, input.Port))
+	opts.SetUsername(input.Username)
+	opts.SetPassword(input.Password)
+	opts.SetKeepAlive(30 * time.Second)
+	opts.SetPingTimeout(10 * time.Second)
+	// Auto-reconnect dropped sessions and cap the backoff — paho's 10m default is
+	// far too slow to recover from a blip.
+	opts.SetAutoReconnect(true)
+	opts.SetMaxReconnectInterval(30 * time.Second)
+
+	// Subscribe INSIDE OnConnect so subscriptions are (re)established on every
+	// connect AND auto-reconnect. With CleanSession=true (paho default) the broker
+	// discards subscriptions on disconnect; subscribing only once after Connect()
+	// leaves an auto-reconnected client "connected" but receiving nothing — the
+	// silent half-dead state that stops popup/check/return callbacks. This is the fix.
+	opts.SetOnConnectHandler(func(c mqtt.Client) {
+		c.Subscribe(string(constants.TOPIC_SUBSCRIBE), 0, onUpdate)
+		c.Subscribe("/powerbank/+/user/heart", 0, onHeart)
+	})
+	opts.SetConnectionLostHandler(func(_ mqtt.Client, err error) {
+		if input.Debug {
+			fmt.Printf("[mqtt] connection lost: %v\n", err)
+		}
 	})
 
+	if input.Debug {
+		opts.SetDefaultPublishHandler(func(client mqtt.Client, msg mqtt.Message) {
+			fmt.Printf("TOPIC: %s\n", msg.Topic())
+			fmt.Printf("MSG: %s\n", msg.Payload())
+		})
+	}
+
+	c := mqtt.NewClient(opts)
+	// Block on the initial connect so callers still get an error if the broker is
+	// unreachable at startup; OnConnect handles (re)subscription from here on.
+	if token := c.Connect(); token.Wait() && token.Error() != nil {
+		return nil, fmt.Errorf("mqtt connect: %w", token.Error())
+	}
+
 	return &apiService{client: c, debug: input.Debug}, nil
+}
+
+func (s *apiService) Disconnect() {
+	if s.client != nil && s.client.IsConnected() {
+		s.client.Disconnect(250)
+	}
 }
 
 func (s *apiService) Publish(input powerbankModels.PublishInput) error {
