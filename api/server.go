@@ -14,16 +14,14 @@ import (
 	powerbankUtils "github.com/techpartners-asia/powerbank/utils"
 )
 
-// publishWaitTimeout bounds how long Publish waits for completion. For a QoS 1
-// dispense this is the wait for the broker PUBACK; without a bound a slow or
-// unreachable broker could stall the caller (the dispense path) indefinitely.
+// publishWaitTimeout bounds how long Publish waits for the broker to accept the
+// message, so a slow or unreachable broker cannot stall the caller (the dispense path).
 const publishWaitTimeout = 10 * time.Second
 
-// defaultPopupTTLSeconds is the eject-validity window applied to a popup that the
-// caller did not stamp with a ttl. A dispense MUST carry a timestamp+ttl so the
-// cabinet can reject a stale command (reply 0x88, no eject) — that is what makes
-// reliable (QoS 1) delivery safe. Defaulting here guarantees no caller can publish
-// an unguarded popup that could eject arbitrarily late.
+// defaultPopupTTLSeconds is the ttl applied to a popup the caller did not stamp, so we
+// always emit the documented timestamp+ttl form. NOTE: cabinet firmware was verified on
+// real hardware NOT to honor timestamp+ttl (stale commands, even 2h old, still eject),
+// so this does not time-bound the command — it is the spec form only.
 const defaultPopupTTLSeconds = 30
 
 // ApiService is the MQTT publish surface for the Volinks Powerbank Protocol V1.
@@ -159,17 +157,10 @@ func (s *apiService) Disconnect() {
 func (s *apiService) Publish(input powerbankModels.PublishInput) error {
 	var payload string
 	var topic string
-	// qos defaults to 0 (fire-and-forget). Dispense commands are upgraded to QoS 1
-	// ONLY when they carry a timestamp+ttl: the cabinet rejects a dispense received
-	// more than ttl seconds after the timestamp (protocol reply 0x88, no eject), so
-	// QoS 1's retry/redelivery cannot cause a late or surprise eject — it only makes
-	// in-window delivery reliable. A popup WITHOUT a ttl must stay QoS 0, since a
-	// redelivered ttl-less command could eject the bank arbitrarily late.
-	var qos byte
 
-	// Guarantee every dispense carries a timestamp+ttl so it is always TTL-guarded
-	// (and therefore safe to send at QoS 1). A caller that omits them gets the
-	// defaults rather than an unguarded popup.
+	// Default the popup timestamp+ttl so we always send the documented enhanced form
+	// (harmless even though this firmware ignores it — see the publish call for why
+	// dispenses stay QoS 0).
 	if input.PublishType == constants.PUBLISH_TYPE_POPUP || input.PublishType == constants.PUBLISH_TYPE_POPUP_BY_HOLE {
 		if input.Timestamp == "" {
 			input.Timestamp = strconv.FormatInt(time.Now().Unix(), 10)
@@ -193,9 +184,7 @@ func (s *apiService) Publish(input powerbankModels.PublishInput) error {
 		}
 		if input.Timestamp != "" && input.TTL != "" {
 			payload = fmt.Sprintf("{\"cmd\":\"%v\",\"data\":\"%v\",\"io\":\"%v\",\"timestamp\":\"%v\",\"ttl\":\"%v\"}",
-				constants.PUBLISH_TYPE_POPUP_BY_HOLE, input.Data, io, input.Timestamp, input.TTL)
-			qos = 1 // safe: ttl bounds any late delivery (see qos declaration)
-		} else {
+				constants.PUBLISH_TYPE_POPUP_BY_HOLE, input.Data, io, input.Timestamp, input.TTL)		} else {
 			payload = fmt.Sprintf("{\"cmd\":\"%v\",\"data\":\"%v\",\"io\":\"%v\"}",
 				constants.PUBLISH_TYPE_POPUP_BY_HOLE, input.Data, io)
 		}
@@ -203,9 +192,7 @@ func (s *apiService) Publish(input powerbankModels.PublishInput) error {
 	case constants.PUBLISH_TYPE_POPUP:
 		if input.Timestamp != "" && input.TTL != "" {
 			payload = fmt.Sprintf("{\"cmd\":\"%v\",\"data\":\"%v\",\"timestamp\":\"%v\",\"ttl\":\"%v\"}",
-				constants.PUBLISH_TYPE_POPUP, input.Data, input.Timestamp, input.TTL)
-			qos = 1 // safe: ttl bounds any late delivery (see qos declaration)
-		} else {
+				constants.PUBLISH_TYPE_POPUP, input.Data, input.Timestamp, input.TTL)		} else {
 			payload = fmt.Sprintf("{\"cmd\":\"%v\",\"data\":\"%v\"}", constants.PUBLISH_TYPE_POPUP, input.Data)
 		}
 		topic = fmt.Sprintf(string(constants.TOPIC_PUBLISH), input.ClientID)
@@ -219,12 +206,17 @@ func (s *apiService) Publish(input powerbankModels.PublishInput) error {
 		return fmt.Errorf("invalid publish type: %v", input.PublishType)
 	}
 
-	token := s.client.Publish(topic, qos, false, payload)
-	// Bound the wait: a QoS 1 publish blocks until the broker PUBACKs, so without a
-	// timeout a slow/unreachable broker could stall the dispense indefinitely. QoS 0
-	// completes effectively immediately.
+	// QoS 0. A dispense is a NON-IDEMPOTENT physical action; MQTT QoS 1 is at-least-once,
+	// so a lost PUBACK makes the broker redeliver (DUP=1) and this firmware will eject a
+	// SECOND bank. It also does not honor the timestamp+ttl freshness key (verified on
+	// real hardware: stale commands, even 2h old, still eject), so QoS 1 also risks a
+	// late eject. Reliability for a dropped dispense is handled application-side (re-pop
+	// with a fresh timestamp after a positive non-dispense check), never by broker
+	// redelivery of a non-idempotent command.
+	token := s.client.Publish(topic, 0, false, payload)
+	// Bound the wait so a slow/unreachable broker cannot stall the dispense caller.
 	if !token.WaitTimeout(publishWaitTimeout) {
-		return fmt.Errorf("mqtt publish timed out after %s (topic=%s, qos=%d)", publishWaitTimeout, topic, qos)
+		return fmt.Errorf("mqtt publish timed out after %s (topic=%s)", publishWaitTimeout, topic)
 	}
 	if err := token.Error(); err != nil {
 		return fmt.Errorf("mqtt publish: %w", err)
