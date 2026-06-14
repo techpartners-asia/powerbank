@@ -77,8 +77,11 @@ func ParsePopupByHolePowerBankResponse(response []byte) (*powerbankModels.PowerB
 }
 
 func ParsePopupPowerBankResponse(response []byte) (*powerbankModels.PowerBankPopupResponse, error) {
-	if len(response) < 9 {
-		return nil, fmt.Errorf("invalid data length: expected at least 9 bytes, got %d", len(response))
+	// The 0x31 popup_sn frame is 12 bytes; this reads up to response[11] (Verify).
+	// Guarding on 9 (the old value) let a 9–11 byte frame panic with index-out-of-range
+	// on the dispense-ACK path.
+	if len(response) < 12 {
+		return nil, fmt.Errorf("invalid data length: expected at least 12 bytes, got %d", len(response))
 	}
 
 	return &powerbankModels.PowerBankPopupResponse{
