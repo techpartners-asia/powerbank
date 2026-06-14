@@ -14,10 +14,6 @@ import (
 	powerbankUtils "github.com/techpartners-asia/powerbank/utils"
 )
 
-// publishWaitTimeout bounds how long Publish waits for the broker to accept the
-// message, so a slow or unreachable broker cannot stall the caller (the dispense path).
-const publishWaitTimeout = 10 * time.Second
-
 // defaultPopupTTLSeconds is the ttl applied to a popup the caller did not stamp, so we
 // always emit the documented timestamp+ttl form. NOTE: cabinet firmware was verified on
 // real hardware NOT to honor timestamp+ttl (stale commands, even 2h old, still eject),
@@ -214,10 +210,7 @@ func (s *apiService) Publish(input powerbankModels.PublishInput) error {
 	// with a fresh timestamp after a positive non-dispense check), never by broker
 	// redelivery of a non-idempotent command.
 	token := s.client.Publish(topic, 0, false, payload)
-	// Bound the wait so a slow/unreachable broker cannot stall the dispense caller.
-	if !token.WaitTimeout(publishWaitTimeout) {
-		return fmt.Errorf("mqtt publish timed out after %s (topic=%s)", publishWaitTimeout, topic)
-	}
+	token.Wait()
 	if err := token.Error(); err != nil {
 		return fmt.Errorf("mqtt publish: %w", err)
 	}
