@@ -120,7 +120,10 @@ func NewServer(input powerbankModels.ServerInput) (ApiService, error) {
 }
 
 func (s *apiService) Disconnect() {
-	if s.client != nil && s.client.IsConnected() {
+	if s.client != nil {
+		// Unconditional (not only when IsConnected): a client mid-auto-reconnect
+		// reports IsConnected()==false but still runs a background reconnect
+		// goroutine; Disconnect tears it down. Guarding on IsConnected would leak it.
 		s.client.Disconnect(250)
 	}
 }
